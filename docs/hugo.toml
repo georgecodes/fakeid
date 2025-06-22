@@ -1,6 +1,6 @@
-baseURL = 'https://easyid.githubpages.com/'
+baseURL = 'https://georgecodes.githubio/fakeid'
 languageCode = 'en-gb'
-title = 'EasyID Documentation'
+title = 'Fke ID Documentation'
 theme = "relearn"
 
 [params]
