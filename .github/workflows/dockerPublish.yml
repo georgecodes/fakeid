@@ -36,9 +36,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags:
-            - ${{ steps.meta.outputs.tags }}
-            - v0.0.1
+          tags: ["${{ steps.meta.outputs.tags }}", "v0.0.1"]
           labels: ${{ steps.meta.outputs.labels }}
 
       - name: Generate artifact attestation
