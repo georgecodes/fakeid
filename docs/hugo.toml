@@ -1,0 +1,21 @@
+baseURL = 'https://easyid.githubpages.com/'
+languageCode = 'en-gb'
+title = 'EasyID Documentation'
+theme = "relearn"
+
+[params]
+[[params.themeVariant]]
+identifier = 'zen-light'
+name = 'Light'
+
+[[params.themeVariant]]
+identifier = 'zen-dark'
+name = 'Dark'
+
+[[params.themeVariant]]
+identifier = 'neon'
+name = 'Go on, go neon'
+
+ordersectionsby = "weight"
+collapsibleMenu = true
+alwaysopen = ""
