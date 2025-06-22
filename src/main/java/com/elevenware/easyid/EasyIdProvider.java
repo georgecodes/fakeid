@@ -19,7 +19,7 @@ public class EasyIdProvider {
     private final DiscoveryDocument discoveryDocument;
     private final Configuration configuration;
     private Map<String, AuthRequest> requests = new HashMap<>();
-    private Map<String, String> issuedTokens = new HashMap<>();
+    private Map<String, Grant> issuedTokens = new HashMap<>();
 
     public EasyIdProvider(Configuration configuration) {
         this.baseUrl = configuration.getIssuer();
@@ -38,11 +38,18 @@ public class EasyIdProvider {
         String clientSecret = context.formParam("client_secret");
         String grantTypeName = context.formParam("grant_type");
         String scope = context.formParam("scope");
+        String authCode = context.formParam("code");
         AuthRequest request = requests.get(context.formParam("code"));
         String idToken = idToken(request.getNonce());
+        String accessToken = RandomStringUtils.randomAlphanumeric(32);
+        Grant grant = new Grant();
+        grant.setAccessToken(accessToken);
+        grant.setClientId(params.get("client_id").get(0));
+        grant.setSub(configuration.getClaims().get("name").toString());
+        issuedTokens.put(accessToken, grant);
 
         context.json(Map.of(
-                "access_token", issuedTokens.get(context.formParam("code")),
+                "access_token", accessToken,
                 "token_type", "Bearer",
                 "expires_in", 3600,
                 "scope", "scope",
@@ -74,7 +81,11 @@ public class EasyIdProvider {
         }
         if(responseType.contains("token")) {
             String accessToken = RandomStringUtils.randomAlphanumeric(32);
-            issuedTokens.put(authCode, accessToken);
+            Grant grant = new Grant();
+            grant.setAccessToken(accessToken);
+            grant.setClientId(params.get("client_id").get(0));
+            grant.setSub(configuration.getClaims().get("name").toString());
+            issuedTokens.put(authCode, grant);
             responseBuilder.append(separator)
                     .append("id_token=").append(accessToken);
             separator = '&';
@@ -116,7 +127,27 @@ public class EasyIdProvider {
         }
     }
 
+
     public void jwksEndpoint(@NotNull Context context) {
         context.json(configuration.getJwks().toPublicJWKSet().toJSONObject(true));
+    }
+
+    public void introspectionEndpoint(@NotNull Context context) {
+        Map<String, List<String>> body = context.formParamMap();
+        String token = body.get("token").get(0);
+        Grant grant = issuedTokens.get(token);
+        if(grant != null) {
+            // In a real implementation, you would check the token validity and other claims
+            context.json(Map.of(
+                    "active", true,
+                    "client_id", grant.getClientId(),
+                    "sub", grant.getSub(),
+                    "scope", "scope",
+                    "exp", System.currentTimeMillis() / 1000L + 3600,
+                    "iat", System.currentTimeMillis() / 1000L
+            ));
+        } else {
+            context.json(Map.of("active", false));
+        }
     }
 }

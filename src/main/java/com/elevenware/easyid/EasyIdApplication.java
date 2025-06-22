@@ -27,6 +27,7 @@ public class EasyIdApplication {
                 .get("/jwks", provider::jwksEndpoint)
                 .get("/authorize", provider::authorizationEndpoint)
                 .post("/token", provider::tokenEndpoint)
+                .post("/token/introspect", provider::introspectionEndpoint)
                 .start(8091);
     }
 
