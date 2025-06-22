@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import io.javalin.Javalin;
 import io.javalin.json.JavalinJackson;
 
-public class EasyIdApplication {
+public class FakeIdApplication {
 
     public static void main(String[] args) {
 
@@ -16,7 +16,7 @@ public class EasyIdApplication {
                 .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
         String configLocation = String.format("%s/config/config.json", System.getProperty("user.dir"));
         Configuration configuration = Configuration.loadFromFile(configLocation);
-        var provider = new EasyIdProvider(configuration);
+        var provider = new FakeIdProvider(configuration);
         
         var app = Javalin.create(c -> {
             c.jsonMapper(jsonMapper);

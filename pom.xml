@@ -1,17 +1,14 @@
 <project>
-    <!-- model version - always 4.0.0 for Maven 2.x POMs -->
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- project coordinates - values which uniquely identify this project -->
     <groupId>com.elevenware</groupId>
     <artifactId>fakeid</artifactId>
     <version>0.0.1-SNAPSHOT</version>
 
     <properties>
-        <main.class>com.elevenware.fakeid.EasyIdApplication</main.class>
+        <main.class>com.elevenware.fakeid.FakeIdApplication</main.class>
     </properties>
 
-    <!-- library dependencies -->
     <dependencies>
         <dependency>
             <groupId>io.javalin</groupId>
@@ -37,6 +34,24 @@
             <groupId>com.nimbusds</groupId>
             <artifactId>nimbus-jose-jwt</artifactId>
             <version>9.41.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>5.10.5</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-params</artifactId>
+            <version>5.10.5</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>5.6.0</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
     <build>

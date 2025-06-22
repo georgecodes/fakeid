@@ -1,0 +1,128 @@
+package com.elevenware.fakeid;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nimbusds.jose.Algorithm;
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.jwk.JWK;
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.KeyUse;
+import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+public class ConfigurationTests {
+
+    @Test
+    void zeroConfiguration() {
+
+        Configuration config = Configuration.defaultConfiguration();
+        assertNotNull(config.getIssuer());
+
+        Map<String, Object> claims = config.getClaims();
+        assertNotNull(claims);
+        assertTrue(claims.containsKey("name"));
+        assertTrue(claims.containsKey("email"));
+
+        JWKSet jwkSet = config.getJwks();
+        assertNotNull(jwkSet);
+        assertFalse(jwkSet.isEmpty());
+        JWK jwk = jwkSet.getKeyByKeyId("signingKey");
+        assertNotNull(jwk);
+        assertTrue(jwk.isPrivate());
+
+    }
+
+    @Test
+    void fileBasedWithClaimsOnly(@TempDir File tmp) throws IOException {
+        Map<String, Object> claims = Map.of(
+                "name", "Jim Dev",
+                "email", "jim@example.com"
+        );
+        createConfig(tmp, Map.of("claims", claims));
+        Configuration config = Configuration.loadFromFile(tmp.getPath() + "/config.json");
+        assertNotNull(config.getIssuer());
+
+        claims = config.getClaims();
+        assertNotNull(claims);
+        assertTrue(claims.containsKey("name"));
+        assertEquals("Jim Dev", claims.get("name"));
+        assertTrue(claims.containsKey("email"));
+        assertEquals("jim@example.com", claims.get("email"));
+
+        JWKSet jwkSet = config.getJwks();
+        assertNotNull(jwkSet);
+        assertFalse(jwkSet.isEmpty());
+        JWK jwk = jwkSet.getKeyByKeyId("signingKey");
+        assertNotNull(jwk);
+        assertTrue(jwk.isPrivate());
+    }
+
+    @Test
+    void fileBasedWithJwksOnly(@TempDir File tmp) throws IOException, JOSEException {
+        RSAKey theJwk = new RSAKeyGenerator(2048)
+                .keyUse(KeyUse.SIGNATURE)
+                .keyID("signingKey")
+                .issueTime(new Date())
+                .algorithm(Algorithm.parse("RS256"))
+                .generate();
+        JWKSet jwks = new JWKSet(theJwk);
+
+        createConfig(tmp, Map.of("jwks", jwks.toJSONObject(false)));
+        Configuration config = Configuration.loadFromFile(tmp.getPath() + "/config.json");
+        assertNotNull(config.getIssuer());
+
+        Map<String, Object> claims = config.getClaims();
+        assertNotNull(claims);
+        assertTrue(claims.containsKey("name"));
+        assertTrue(claims.containsKey("email"));
+
+        JWKSet jwkSet = config.getJwks();
+        assertNotNull(jwkSet);
+        assertFalse(jwkSet.isEmpty());
+        JWK jwk = jwkSet.getKeyByKeyId("signingKey");
+        RSAKey rsaKey = (RSAKey) jwk;
+        assertNotNull(rsaKey);
+        assertTrue(rsaKey.isPrivate());
+        assertEquals(theJwk.getModulus(), rsaKey.getModulus());
+        assertEquals(theJwk.getPublicExponent(), rsaKey.getPublicExponent());
+        assertEquals(theJwk.getPrivateExponent(), rsaKey.getPrivateExponent());
+    }
+
+    @Test
+    void fileBasedWithIssuerOnly(@TempDir File tmp) throws IOException {
+        createConfig(tmp, Map.of("issuer", "https://auth.example.localhost.com"));
+        Configuration config = Configuration.loadFromFile(tmp.getPath() + "/config.json");
+        assertNotNull(config);
+        assertEquals("https://auth.example.localhost.com", config.getIssuer());
+        Map<String, Object> claims = config.getClaims();
+        assertNotNull(claims);
+        assertTrue(claims.containsKey("name"));
+        assertTrue(claims.containsKey("email"));
+
+        JWKSet jwkSet = config.getJwks();
+        assertNotNull(jwkSet);
+        assertFalse(jwkSet.isEmpty());
+        JWK jwk = jwkSet.getKeyByKeyId("signingKey");
+        assertNotNull(jwk);
+        assertTrue(jwk.isPrivate());
+    }
+
+    private void createConfig(File tmp, Map<String, Object> config) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.writeValue(new FileOutputStream(new File(tmp, "config.json")), config);
+    }
+
+}
