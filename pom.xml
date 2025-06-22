@@ -1,17 +1,14 @@
 <project>
-    <!-- model version - always 4.0.0 for Maven 2.x POMs -->
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- project coordinates - values which uniquely identify this project -->
     <groupId>com.elevenware</groupId>
     <artifactId>fakeid</artifactId>
     <version>0.0.1-SNAPSHOT</version>
 
     <properties>
-        <main.class>com.elevenware.fakeid.EasyIdApplication</main.class>
+        <main.class>com.elevenware.fakeid.FakeIdApplication</main.class>
     </properties>
 
-    <!-- library dependencies -->
     <dependencies>
         <dependency>
             <groupId>io.javalin</groupId>

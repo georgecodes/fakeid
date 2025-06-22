@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import io.javalin.Javalin;
 import io.javalin.json.JavalinJackson;
 
-public class EasyIdApplication {
+public class FakeIdApplication {
 
     public static void main(String[] args) {
 
