@@ -13,7 +13,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
-public class EasyIdProvider {
+public class FakeIdProvider {
 
     private final String baseUrl;
     private final DiscoveryDocument discoveryDocument;
@@ -21,7 +21,7 @@ public class EasyIdProvider {
     private Map<String, AuthRequest> requests = new HashMap<>();
     private Map<String, Grant> issuedTokens = new HashMap<>();
 
-    public EasyIdProvider(Configuration configuration) {
+    public FakeIdProvider(Configuration configuration) {
         this.baseUrl = configuration.getIssuer();
         this.configuration = configuration;
         this.discoveryDocument = DiscoveryDocument.create(baseUrl);

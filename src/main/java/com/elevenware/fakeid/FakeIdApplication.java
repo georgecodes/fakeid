@@ -16,7 +16,7 @@ public class FakeIdApplication {
                 .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
         String configLocation = String.format("%s/config/config.json", System.getProperty("user.dir"));
         Configuration configuration = Configuration.loadFromFile(configLocation);
-        var provider = new EasyIdProvider(configuration);
+        var provider = new FakeIdProvider(configuration);
         
         var app = Javalin.create(c -> {
             c.jsonMapper(jsonMapper);
