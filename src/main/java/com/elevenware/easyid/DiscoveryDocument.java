@@ -1,10 +1,19 @@
 package com.elevenware.easyid;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.util.Set;
 
 public class DiscoveryDocument {
 
     private  String base;
+    private String authorizationEndpoint;
+    private String tokenEndpoint;
+    private String userinfoEndpoint;
+    private String jwksUri;
+    private String registrationEndpoint;
+    private String endSessionEndpoint;
+    private String introspectionEndpoint;
     private boolean requestParameterSupported;
     private Set<String> grantTypesSupported;
     private Set<String> scopesSupported;
@@ -15,7 +24,44 @@ public class DiscoveryDocument {
     private Set<String> idTokenSigningAlgsSupported = Set.of("RS256", "PS256");
     private Set<String> claimsSuported = Set.of("name", "email", "given_name", "family_name", "sub");
 
+    @JsonIgnore
     public String getBase() {
+        return base;
+    }
+
+    public String getAuthorizationEndpoint() {
+        return fromBase("/authorize");
+    }
+
+    public String getTokenEndpoint() {
+        return fromBase("/token");
+    }
+
+    public String getUserinfoEndpoint() {
+        return fromBase("/userinfo");
+    }
+
+    public String getJwksUri() {
+        return fromBase("/jwks");
+    }
+
+    public String getRegistrationEndpoint() {
+        return fromBase("/register");
+    }
+
+    public String getEndSessionEndpoint() {
+        return fromBase("/logout");
+    }
+
+    public String getIntrospectionEndpoint() {
+        return fromBase("/token/introspect");
+    }
+
+    private String fromBase(String s) {
+        return base + s;
+    }
+
+    public String getIssuer() {
         return base;
     }
 

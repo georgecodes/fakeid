@@ -1,13 +1,33 @@
 package com.elevenware.easyid;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import io.javalin.Javalin;
+import io.javalin.json.JavalinJackson;
+
+import java.util.Set;
 
 public class EasyIdApplication {
 
     public static void main(String[] args) {
-        var app = Javalin.create(/*config*/)
-                .get("/.well-known/openid-configuration", ctx -> ctx.result("Hello World"))
-                .start(7070);
+
+        JavalinJackson jsonMapper = new JavalinJackson();
+
+        jsonMapper.getMapper()
+                .setSerializationInclusion(JsonInclude.Include.NON_NULL)
+                .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
+        String configLocation = String.format("%s/config/config.json", System.getProperty("user.dir"));
+        Configuration configuration = Configuration.loadFromFile(configLocation);
+        var provider = new EasyIdProvider(configuration);
+        
+        var app = Javalin.create(c -> {
+            c.jsonMapper(jsonMapper);
+                })
+                .get("/.well-known/openid-configuration", provider::getDiscoveryDocument)
+                .get("/jwks", provider::jwksEndpoint)
+                .get("/authorize", provider::authorizationEndpoint)
+                .post("/token", provider::tokenEndpoint)
+                .start(8091);
     }
 
 }
