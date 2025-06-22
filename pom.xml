@@ -3,9 +3,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <!-- project coordinates - values which uniquely identify this project -->
-    <groupId>com.mygroup</groupId>
-    <artifactId>my-javalin-project</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <groupId>com.elevenware</groupId>
+    <artifactId>easyid</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+
+    <properties>
+        <main.class>com.elevenware.easyid.EasyIdApplication</main.class>
+    </properties>
 
     <!-- library dependencies -->
     <dependencies>
@@ -45,6 +49,33 @@
                     <source>17</source>
                     <target>17</target>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>2.6</version>
+                <configuration>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <mainClass>${main.class}</mainClass>
+                        </manifest>
+                    </archive>
+                    <finalName>easyid-all</finalName>
+                    <appendAssemblyId>false</appendAssemblyId>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>assemble-all</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
