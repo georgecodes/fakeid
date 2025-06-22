@@ -1,11 +1,9 @@
-package com.elevenware.easyid;
+package com.elevenware.fakeid;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import io.javalin.Javalin;
 import io.javalin.json.JavalinJackson;
-
-import java.util.Set;
 
 public class EasyIdApplication {
 

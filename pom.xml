@@ -4,11 +4,11 @@
 
     <!-- project coordinates - values which uniquely identify this project -->
     <groupId>com.elevenware</groupId>
-    <artifactId>easyid</artifactId>
+    <artifactId>fakeid</artifactId>
     <version>0.0.1-SNAPSHOT</version>
 
     <properties>
-        <main.class>com.elevenware.easyid.EasyIdApplication</main.class>
+        <main.class>com.elevenware.fakeid.EasyIdApplication</main.class>
     </properties>
 
     <!-- library dependencies -->
@@ -64,7 +64,7 @@
                             <mainClass>${main.class}</mainClass>
                         </manifest>
                     </archive>
-                    <finalName>easyid-all</finalName>
+                    <finalName>fakeid-all</finalName>
                     <appendAssemblyId>false</appendAssemblyId>
                 </configuration>
                 <executions>

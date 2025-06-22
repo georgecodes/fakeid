@@ -1,4 +1,4 @@
-package com.elevenware.easyid;
+package com.elevenware.fakeid;
 
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;

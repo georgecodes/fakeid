@@ -6,7 +6,7 @@ on:
       - "main"
 
 jobs:
-  test-easy-id:
+  test-fakeid:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout project sources
@@ -20,9 +20,9 @@ jobs:
       - name: Run tests
         run: ./mvnw clean test
 
-  publish-easy-id-lib:
+  publish-fakeid-lib:
     runs-on: ubuntu-latest
-    needs: [test-easy-id]
+    needs: [test-fakeid]
     if: "!contains(github.event.head_commit.message, '[NOPUBLISH]')"
     steps:
       - name: Import GPG Key
@@ -38,7 +38,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           architecture: x64
-      - name: Publish easy-id
+      - name: Publish fakeid library
         run: ./mvnw deploy -s settings.xml -D skipTests
         env:
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
