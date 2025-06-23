@@ -1,5 +1,7 @@
 package com.elevenware.fakeid;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.nimbusds.jose.Algorithm;
@@ -9,7 +11,13 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.KeyUse;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
+import com.nimbusds.jwt.JWT;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.JWTParser;
+import com.nimbusds.jwt.PlainJWT;
 
+import java.text.ParseException;
+import java.util.Base64;
 import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
@@ -74,6 +82,23 @@ public class Configuration {
         if(configuration.getJwks() != null) {
             return;
         }
+        String setSigningKey = System.getenv("FAKEID_SIGNING_KEY");
+        if(setSigningKey != null) {
+            try {
+                setSigningKey = new String(Base64.getDecoder().decode(setSigningKey));
+                RSAKey key = RSAKey.parseFromPEMEncodedObjects(setSigningKey).toRSAKey();
+                key = new RSAKey.Builder(key.toRSAPublicKey())
+                        .privateKey(key.toRSAPrivateKey())
+                        .algorithm(Algorithm.parse("RS256"))
+                        .keyID("signingKey")
+                        .keyUse(KeyUse.SIGNATURE)
+                        .build();
+                configuration.setJwks(new JWKSet(key));
+                return;
+            } catch (JOSEException e) {
+                throw new RuntimeException(e);
+            }
+        }
         try {
             RSAKey jwk = new RSAKeyGenerator(2048)
                     .keyUse(KeyUse.SIGNATURE)
@@ -92,13 +117,53 @@ public class Configuration {
         if(configuration.getClaims() != null) {
             return;
         }
+        String sampleClaims = System.getenv("FAKEID_SAMPLE_CLAIMS");
+        if(sampleClaims == null) {
+            sampleClaims = System.getenv("FAKEID_SAMPLE_JWT");
+        }
+        if(sampleClaims != null) {
+            String[] split = sampleClaims.split("\\.");
+            switch(split.length) {
+                case 3:
+                    configuration.setClaims(parseSignedJwt(sampleClaims));
+                    return;
+                case 1:
+                    configuration.setClaims(parseUnsignedJwt(sampleClaims));
+                    return;
+                default:
+                    throw new RuntimeException("Invalid claims format: " + sampleClaims);
+            }
+        }
         configuration.setClaims(Map.of(
                 "name", "John C. Developer",
                 "email", "john@developer.com"));
     }
 
+    private static Map<String, Object> parseUnsignedJwt(String sampleClaims) {
+        sampleClaims = new String(Base64.getDecoder().decode(sampleClaims));
+        try {
+            return new ObjectMapper().readValue(sampleClaims, Map.class);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static Map<String, Object> parseSignedJwt(String sampleClaims) {
+        try {
+            JWT jwt = JWTParser.parse(sampleClaims);
+            return jwt.getJWTClaimsSet().getClaims();
+        } catch (ParseException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private static void setDefaultIssuer(Configuration configuration) {
         if(configuration.getIssuer() != null) {
+            return;
+        }
+        String setIssuer = System.getenv("FAKEID_ISSUER");
+        if(setIssuer != null) {
+            configuration.setIssuer(setIssuer);
             return;
         }
         configuration.setIssuer("http://localhost:8091");
