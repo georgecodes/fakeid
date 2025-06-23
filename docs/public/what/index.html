@@ -5,18 +5,22 @@
     <meta name="viewport" content="height=device-height, width=device-width, initial-scale=1.0, minimum-scale=1.0">
     <meta name="generator" content="Hugo 0.147.8">
     <meta name="generator" content="Relearn 7.6.1+4407b4364ab6f7477f7671fbd20c0494bade40ee">
-    <meta name="description" content="">
+    <meta name="description" content="What This Actually Does Typically, if you are authenticating users to your application via OIDC, you would have an OP - an OIDC provider - running somewhere. Upon hitting, for instance, a “login with OIDC” button, your app would redirect the user to the OP, wherein they would log in and be presented with a consent page saying what application needed access etc. and a button to grant that. Once they grant those permissions they’re redirected back to your application, which, depending on the flow used, would either get an id token immediately, or proceed to obtain one via the back channel.">
     <meta name="author" content="">
     <meta name="twitter:card" content="summary">
-    <meta name="twitter:title" content="Categories :: Fake ID Documentation">
-    <meta property="og:url" content="http://localhost:1313/fakeid/categories/index.html">
+    <meta name="twitter:title" content="What Does It DO? :: Fake ID Documentation">
+    <meta name="twitter:description" content="What This Actually Does Typically, if you are authenticating users to your application via OIDC, you would have an OP - an OIDC provider - running somewhere. Upon hitting, for instance, a “login with OIDC” button, your app would redirect the user to the OP, wherein they would log in and be presented with a consent page saying what application needed access etc. and a button to grant that. Once they grant those permissions they’re redirected back to your application, which, depending on the flow used, would either get an id token immediately, or proceed to obtain one via the back channel.">
+    <meta property="og:url" content="http://localhost:1313/fakeid/what/index.html">
     <meta property="og:site_name" content="Fake ID Documentation">
-    <meta property="og:title" content="Categories :: Fake ID Documentation">
+    <meta property="og:title" content="What Does It DO? :: Fake ID Documentation">
+    <meta property="og:description" content="What This Actually Does Typically, if you are authenticating users to your application via OIDC, you would have an OP - an OIDC provider - running somewhere. Upon hitting, for instance, a “login with OIDC” button, your app would redirect the user to the OP, wherein they would log in and be presented with a consent page saying what application needed access etc. and a button to grant that. Once they grant those permissions they’re redirected back to your application, which, depending on the flow used, would either get an id token immediately, or proceed to obtain one via the back channel.">
     <meta property="og:locale" content="en_gb">
-    <meta property="og:type" content="website">
-    <meta itemprop="name" content="Categories :: Fake ID Documentation">
-    <title>Categories :: Fake ID Documentation</title>
-    <link href="/fakeid/categories/index.xml" rel="alternate" type="application/rss+xml" title="Categories :: Fake ID Documentation">
+    <meta property="og:type" content="article">
+    <meta property="article:section" content="Fake ID">
+    <meta itemprop="name" content="What Does It DO? :: Fake ID Documentation">
+    <meta itemprop="description" content="What This Actually Does Typically, if you are authenticating users to your application via OIDC, you would have an OP - an OIDC provider - running somewhere. Upon hitting, for instance, a “login with OIDC” button, your app would redirect the user to the OP, wherein they would log in and be presented with a consent page saying what application needed access etc. and a button to grant that. Once they grant those permissions they’re redirected back to your application, which, depending on the flow used, would either get an id token immediately, or proceed to obtain one via the back channel.">
+    <meta itemprop="wordCount" content="360">
+    <title>What Does It DO? :: Fake ID Documentation</title>
     <link href="/fakeid/fonts/fontawesome/css/fontawesome-all.min.css?1750690844" rel="stylesheet" media="print" onload="this.media='all';this.onload=null;"><noscript><link href="/fakeid/fonts/fontawesome/css/fontawesome-all.min.css?1750690844" rel="stylesheet"></noscript>
     <link href="/fakeid/css/perfect-scrollbar/perfect-scrollbar.min.css?1750690844" rel="stylesheet">
     <link href="/fakeid/css/theme.css?1750690844" rel="stylesheet">
@@ -32,7 +36,7 @@
       window.relearn = window.relearn || {};
       // configuration
       window.relearn.min = ``;
-      window.relearn.path='\/categories\/index.html';
+      window.relearn.path='\/what\/index.html';
       window.relearn.relBasePath='..';
       window.relearn.relBaseUri='..\/..';
       window.relearn.absBaseUri='http:\/\/localhost:1313\/fakeid';
@@ -84,7 +88,7 @@
       window.T_N_results_found = `{1} results found for "{0}"`;
     </script>
   </head>
-  <body class="mobile-support html" data-url="/fakeid/categories/index.html">
+  <body class="mobile-support html" data-url="/fakeid/what/index.html">
     <div id="R-body" class="default-animation">
       <div id="R-body-overlay"></div>
       <nav id="R-topbar">
@@ -95,14 +99,21 @@
             </div>
             <div class="topbar-button topbar-button-toc" data-content-empty="hide" data-width-s="show" data-width-m="show" data-width-l="show"><button class="topbar-control" onclick="toggleTopbarFlyout(this)" type="button" title="Table of Contents (CTRL&#43;ALT&#43;t)"><i class="fa-fw fas fa-list-alt"></i></button>
               <div class="topbar-content">
-                <div class="topbar-content-wrapper"> 
+                <div class="topbar-content-wrapper">
+<nav class="TableOfContents">
+  <ul>
+    <li><a href="#what-this-actually-does">What This Actually Does</a></li>
+    <li><a href="#implemented-endpoints">Implemented endpoints</a></li>
+    <li><a href="#what-fake-id-does-not-do">What Fake ID does NOT do</a></li>
+  </ul>
+</nav>
                 </div>
               </div>
             </div>
           </div>
           <ol class="topbar-breadcrumbs breadcrumbs highlightable" itemscope itemtype="http://schema.org/BreadcrumbList">
             <li itemscope itemtype="https://schema.org/ListItem" itemprop="itemListElement" class=""><a itemprop="item" href="/fakeid/index.html"><span itemprop="name">Fake ID</span></a><meta itemprop="position" content="1">&nbsp;>&nbsp;</li>
-            <li itemscope itemtype="https://schema.org/ListItem" itemprop="itemListElement" class=""><span itemprop="name">Categories</span><meta itemprop="position" content="2"></li>
+            <li itemscope itemtype="https://schema.org/ListItem" itemprop="itemListElement" class=""><span itemprop="name">What Does It DO?</span><meta itemprop="position" content="2"></li>
           </ol>
           <div class="topbar-area topbar-area-end" data-area="end">
             <div class="topbar-button topbar-button-prev" data-content-empty="disable" data-width-s="show" data-width-m="show" data-width-l="show"><a class="topbar-control" href="/fakeid/index.html" title="Fake ID (🡐)"><i class="fa-fw fas fa-chevron-left"></i></a>
@@ -121,13 +132,32 @@
         </div>
       </nav>
       <div id="R-main-overlay"></div>
-      <main id="R-body-inner" class="highlightable categories" tabindex="-1">
+      <main id="R-body-inner" class="highlightable page" tabindex="-1">
         <div class="flex-block-wrapper">
-<article>
+<article class="default">
   <header class="headline">
   </header>
-<h1 id="categories">Categories</h1>
 
+<h1 id="what-does-it-do">What Does It DO?</h1>
+
+<h2 id="what-this-actually-does">What This Actually Does</h2>
+<p>Typically, if you are authenticating users to your application via OIDC, you would have an OP - an OIDC provider - running somewhere.
+Upon hitting, for instance, a &ldquo;login with OIDC&rdquo; button, your app would redirect the user to the OP, wherein they would log in and be presented
+with a consent page saying what application needed access etc. and a button to grant that. Once they grant those permissions they&rsquo;re redirected back
+to your application, which, depending on the flow used, would either get an id token immediately, or proceed to obtain one via the back channel.</p>
+<p>That&rsquo;s a whistle stop tour of OIDC, which I expect is not necessary if you already are using OIDC. What Fake ID aims to provide, is that same functionality
+for development etc, without the bother of having to run a full blown OP, and without the need for there to be any user interaction. The relying party, that&rsquo;s
+your application, will simply run off to Fake ID, and everything happens automatically, giving it back an id token which it can then use.</p>
+<h2 id="implemented-endpoints">Implemented endpoints</h2>
+<div class="highlight wrap-code" dir="auto"><pre tabindex="0"><code> /.well-known/openid-configuration - this is where discovery happens. It prevents clients having to be configured with various other endpoints etc
+ /authorize - where the initial authorisation request goes. This automatically redirects back to the relying party with state,an auth code and any requested tokens
+ /token - where the relying party can exchange an auth code for access and id tokens
+ /jwsk - where the public key used to sign the id tokens will be available, so that relying parties can verify id tokens</code></pre></div>
+<h2 id="what-fake-id-does-not-do">What Fake ID does NOT do</h2>
+<p>Fake ID is just that - fake. It does not authenticate, nor is it even currently aware of, oauth clients. You must include a client_id in requests and
+a client secret for token requests. These must merely be present, they aren&rsquo;t checked at all.</p>
+<p>The id token returned will always be the same claims, exp and iat aside.</p>
+<p>In short, no, this is not, in any way, an actual implementation of OIDC. It should go without saying, this mustn&rsquo;t be used to secure anything which matters.</p>
 
   <footer class="footline">
   </footer>
@@ -175,7 +205,7 @@
       <div id="R-content-wrapper" class="highlightable">
         <div class="R-sidebarmenu R-shortcutmenu-main">
           <ul class="enlarge morespace collapsible-menu">
-            <li class="" data-nav-id="/fakeid/what/index.html"><a class="padding" href="/fakeid/what/index.html">What Does It DO?</a></li>
+            <li class="active " data-nav-id="/fakeid/what/index.html"><a class="padding" href="/fakeid/what/index.html">What Does It DO?</a></li>
           </ul>
         </div>
         <div class="R-sidebarmenu R-shortcutmenu-shortcuts">

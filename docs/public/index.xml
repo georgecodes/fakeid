@@ -1,11 +1,18 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>EasyID :: EasyID Documentation</title>
-    <link>http://localhost:1313/index.html</link>
-    <description>Introduction If you’re ever developing an application which uses OIDC for login, it can get tiresome setting up an OIDC provider to use during development. EasyID simplifies this by mocking out a basic OP for use in development. With a little configuration, your app can request and receive access and id tokens without you needing to authenticate and consent.</description>
+    <title>Fake ID :: Fake ID Documentation</title>
+    <link>http://localhost:1313/fakeid/index.html</link>
+    <description>Introduction If you’re ever developing an application which uses OIDC for login, it can get tiresome setting up an OIDC provider to use during development. Fake ID simplifies this by mocking out a basic OP for use in development. With a little configuration, your app can request and receive access and id tokens without you needing to authenticate and consent.&#xA;Usage Typically you would run Fake ID in a docker container, or docker compose. Here is a sample docker-compose file</description>
     <generator>Hugo</generator>
     <language>en-gb</language>
-    <atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="http://localhost:1313/fakeid/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>What Does It DO?</title>
+      <link>http://localhost:1313/fakeid/what/index.html</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost:1313/fakeid/what/index.html</guid>
+      <description>What This Actually Does Typically, if you are authenticating users to your application via OIDC, you would have an OP - an OIDC provider - running somewhere. Upon hitting, for instance, a “login with OIDC” button, your app would redirect the user to the OP, wherein they would log in and be presented with a consent page saying what application needed access etc. and a button to grant that. Once they grant those permissions they’re redirected back to your application, which, depending on the flow used, would either get an id token immediately, or proceed to obtain one via the back channel.</description>
+    </item>
   </channel>
 </rss>
