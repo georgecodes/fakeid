@@ -23,23 +23,20 @@ services:
     image: mydockerhub/app:v2
     restart: always
     environment:
-      - OIDC_ISSUER: "http://fakeid:8091"
+      OIDC_ISSUER: "http://localhost:8091"
     ports:
       - '8080:8080'
   fakeid:
     image: georgemc/fakeid:v0.0.1
-    environment:
-      - FAKEID_ISSUER: "http://fakeid:8091"
     ports:
       - "8091:8091"
 ```
 
-The above will run the fake id container and configure it to issue tokens from http://fakeid:8091
+The above will run the fake id container and configure it to issue tokens from http://localhost:8091
 
 ## Configuration
 
-There are a few ways to configure Fake ID. The simplest way is to simply start the container, and allow it to provide sensible defaults. Note that, as shown above, if you are
-running Fake ID in a docker environment, this may won't work and you will at least need to override the issuer.
+There are a few ways to configure Fake ID. The simplest way is to simply start the container, and allow it to provide sensible defaults. 
 
 Configuration options are
 
