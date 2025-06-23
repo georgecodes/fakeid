@@ -40,7 +40,7 @@ public class FakeIdProvider {
         String scope = context.formParam("scope");
         String authCode = context.formParam("code");
         AuthRequest request = requests.get(context.formParam("code"));
-        String idToken = idToken(request.getNonce());
+        String idToken = idToken(request.getNonce(), clientId);
         String accessToken = RandomStringUtils.randomAlphanumeric(32);
         Grant grant = new Grant();
         grant.setAccessToken(accessToken);
@@ -92,7 +92,7 @@ public class FakeIdProvider {
         }
         if (responseType.contains("id_token")) {
             responseBuilder.append(separator)
-                    .append("id_token=").append(idToken(authRequest.getNonce()));
+                    .append("id_token=").append(idToken(authRequest.getNonce(), params.get("client_id").get(0)));
             separator = '&';
         }
         if (authRequest.getState() != null) {
@@ -105,7 +105,7 @@ public class FakeIdProvider {
         context.redirect(redirect);
     }
 
-    private String idToken(String nonce) {
+    private String idToken(String nonce, String clientId) {
         JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder();
         claimsBuilder.subject(configuration.getClaims().get("name").toString());
         for(Map.Entry<String, Object> claim: configuration.getClaims().entrySet()) {
@@ -113,6 +113,7 @@ public class FakeIdProvider {
         }
         claimsBuilder.claim("nonce", nonce);
         claimsBuilder.claim("iss", configuration.getIssuer());
+        claimsBuilder.audience(clientId);
         JWK signingKey = configuration.getJwks().getKeyByKeyId("signingKey");
         String alg = signingKey.getAlgorithm().getName();
         JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.parse(alg))

@@ -14,8 +14,13 @@ public class FakeIdApplication {
         jsonMapper.getMapper()
                 .setSerializationInclusion(JsonInclude.Include.NON_NULL)
                 .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
-        String configLocation = String.format("%s/config/config.json", System.getProperty("user.dir"));
-        Configuration configuration = Configuration.loadFromFile(configLocation);
+        String configLocation = System.getenv("FAKEID_CONFIG_LOCATION");
+        Configuration configuration;
+        if (configLocation != null) {
+            configuration = Configuration.loadFromFile(configLocation);
+        } else {
+            configuration = Configuration.defaultConfiguration();
+        }
         var provider = new FakeIdProvider(configuration);
         
         var app = Javalin.create(c -> {
