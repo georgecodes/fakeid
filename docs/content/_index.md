@@ -13,3 +13,6 @@ to use during development. [Fake ID](https://github.com/georgecodes/fakeid) simp
 OP for use in development. With a little configuration, your app can request and receive access and id tokens without
 you needing to authenticate and consent.
 
+## Usage
+
+Typically you would run Fake ID in a docker container.
