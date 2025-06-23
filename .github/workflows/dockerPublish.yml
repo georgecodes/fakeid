@@ -2,8 +2,8 @@ name: Publish Docker image
 
 on:
   push:
-    paths-ignore:
-      - 'docs/**'
+    paths:
+      - 'src/main/**'
     branches:
       - "main"
 
