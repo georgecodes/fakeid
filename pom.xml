@@ -7,6 +7,11 @@
 
     <properties>
         <main.class>com.elevenware.fakeid.FakeIdApplication</main.class>
+        <license.projectName>Fake ID</license.projectName>
+        <license.organizationName>@georgecode</license.organizationName>
+        <license.copyrightOwners>George McIntosh</license.copyrightOwners>
+        <license.licenseName>apache_v2</license.licenseName>
+        <license.inceptionYear>2025</license.inceptionYear>
     </properties>
 
     <dependencies>
@@ -129,6 +134,29 @@
                         <goals>
                             <goal>jar</goal>
                         </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <version>2.6.0</version>
+                <configuration>
+                    <verbose>false</verbose>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>first</id>
+                        <goals>
+                            <goal>update-file-header</goal>
+                        </goals>
+                        <phase>process-sources</phase>
+                        <configuration>
+                            <roots>
+                                <root>src/main/java</root>
+                                <root>src/test/java</root>
+                            </roots>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
