@@ -2,8 +2,8 @@ name: Build and publish everything on merge
 
 on:
   push:
-    paths-ignore:
-      - 'docs/**'
+    paths:
+      - 'src/main/**'
     branches:
       - "main"
 
