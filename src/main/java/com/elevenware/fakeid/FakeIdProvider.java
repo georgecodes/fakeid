@@ -31,6 +31,9 @@ import io.javalin.http.Context;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.jetbrains.annotations.NotNull;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.*;
 
 public class FakeIdProvider {
@@ -54,17 +57,17 @@ public class FakeIdProvider {
 
     public void tokenEndpoint(@NotNull Context context) {
         Map<String, List<String>> params = context.formParamMap();
-        String clientId = context.formParam("client_id");
-        String clientSecret = context.formParam("client_secret");
+
         String grantTypeName = context.formParam("grant_type");
         String scope = context.formParam("scope");
         String authCode = context.formParam("code");
         AuthRequest request = requests.get(context.formParam("code"));
+        String clientId = request.getClientId();
         String idToken = idToken(request.getNonce(), clientId);
         String accessToken = RandomStringUtils.randomAlphanumeric(32);
         Grant grant = new Grant();
         grant.setAccessToken(accessToken);
-        grant.setClientId(params.get("client_id").get(0));
+        grant.setClientId(request.getClientId());
         grant.setSub(configuration.getClaims().get("name").toString());
         issuedTokens.put(accessToken, grant);
 
@@ -134,6 +137,10 @@ public class FakeIdProvider {
         claimsBuilder.claim("nonce", nonce);
         claimsBuilder.claim("iss", configuration.getIssuer());
         claimsBuilder.audience(clientId);
+        Instant now = Instant.now();
+        claimsBuilder.issueTime(Date.from(now));
+        now = now.plus(1L, ChronoUnit.HOURS);
+        claimsBuilder.expirationTime(Date.from(now));
         JWK signingKey = configuration.getJwks().getKeyByKeyId("signingKey");
         String alg = signingKey.getAlgorithm().getName();
         JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.parse(alg))
