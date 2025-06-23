@@ -1,6 +1,6 @@
 baseURL = 'https://georgecodes.githubio/fakeid'
 languageCode = 'en-gb'
-title = 'Fke ID Documentation'
+title = 'Fake ID Documentation'
 theme = "relearn"
 
 [params]
