@@ -8,11 +8,17 @@ spring:
             client-secret: clientsecret
             scope: openid,profile,email
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+
         provider:
           oidc:
             issuer-uri: http://localhost:8091
 
-  logging:
-    level:
-      org.springframework.web.client.RestTemplate: DEBUG
-      org.springframework.security: DEBUG
+
+logging:
+  level:
+    org:
+      springframework:
+        web:
+          client:
+            RestTemplate: DEBUG
+        security: DEBUG
