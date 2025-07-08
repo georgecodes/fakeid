@@ -113,9 +113,10 @@ public class FakeIdProvider {
             grant.setAccessToken(accessToken);
             grant.setClientId(params.get("client_id").get(0));
             grant.setSub(configuration.getClaims().get("name").toString());
-            issuedTokens.put(authCode, grant);
+            grant.setScope(authRequest.getScopes());
+            issuedTokens.put(accessToken, grant);
             responseBuilder.append(separator)
-                    .append("id_token=").append(accessToken);
+                    .append("token=").append(accessToken);
             separator = '&';
         }
         if (responseType.contains("id_token")) {
@@ -176,7 +177,7 @@ public class FakeIdProvider {
                     "active", true,
                     "client_id", grant.getClientId(),
                     "sub", grant.getSub(),
-                    "scope", "scope",
+                    "scope", String.join(" ", grant.getScopes()),
                     "exp", System.currentTimeMillis() / 1000L + 3600,
                     "iat", System.currentTimeMillis() / 1000L
             ));
