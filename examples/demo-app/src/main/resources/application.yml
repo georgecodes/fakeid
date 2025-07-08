@@ -1,0 +1,24 @@
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          oidc:
+            client-id: client1
+            client-secret: clientsecret
+            scope: openid,profile,email
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+
+        provider:
+          oidc:
+            issuer-uri: ${issuer.uri:http://localhost:8091}
+
+
+logging:
+  level:
+    org:
+      springframework:
+        web:
+          client:
+            RestTemplate: DEBUG
+        security: DEBUG
