@@ -15,19 +15,13 @@ you needing to authenticate and consent.
 
 ## Usage
 
-Typically you would run Fake ID in a docker container, or docker compose. Here is a sample docker-compose file
+Typically you would run Fake ID in a docker container, or docker compose. Here is a sample docker-compose file for using
+FakeID whilst you develop your relying party application
 
 ```yaml
 version: '3.8'
 
 services:
-  myapplication:
-    image: mydockerhub/app:v2
-    restart: always
-    environment:
-      OIDC_ISSUER: "http://localhost:8091"
-    ports:
-      - '8080:8080'
   fakeid:
     image: georgemc/fakeid:v0.0.1
     ports:
@@ -35,6 +29,31 @@ services:
 ```
 
 The above will run the fake id container with all the default values.
+
+You may also wish to run your relying party inside docker compose. This needs a little  more work so that FakeID is reachable from both
+your browser and your relying party via the backchannel.
+
+```yaml
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+    ports:
+      - "8080:8080"
+    environment:
+      ISSUER_URI: http://auth.localtest.me:8091
+  fakeid:
+    image: georgemc/fakeid:v0.0.1
+    ports:
+      - "8091:8091"
+    hostname: auth.localtest.me
+    environment:
+      FAKEID_ISSUER: http://auth.localtest.me:8091
+```
+
+The DNS entry auth.localtest.me is externally resolvable to localhost, and we have told docker to allow the fakeid container to be reached via it internally as well.
 
 ## Configuration
 
