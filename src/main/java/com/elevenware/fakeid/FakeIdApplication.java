@@ -24,10 +24,16 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import io.javalin.Javalin;
 import io.javalin.json.JavalinJackson;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FakeIdApplication {
 
+    private static final Logger LOG = LoggerFactory.getLogger(FakeIdApplication.class);
+
     public static void main(String[] args) {
+
+        LOG.info("Starting Fake ID");
 
         JavalinJackson jsonMapper = new JavalinJackson();
 
@@ -37,8 +43,10 @@ public class FakeIdApplication {
         String configLocation = System.getenv("FAKEID_CONFIG_LOCATION");
         Configuration configuration;
         if (configLocation != null) {
+            LOG.info("Loading configuration from {}", configLocation);
             configuration = Configuration.loadFromFile(configLocation);
         } else {
+            LOG.info("Loading default configuration");
             configuration = Configuration.defaultConfiguration();
         }
         var provider = new FakeIdProvider(configuration);
@@ -52,6 +60,7 @@ public class FakeIdApplication {
                 .post("/token", provider::tokenEndpoint)
                 .post("/token/introspect", provider::introspectionEndpoint)
                 .start(8091);
+        LOG.info("Fake ID started");
     }
 
 }

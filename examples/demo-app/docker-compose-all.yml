@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+    ports:
+      - "8080:8080"
+    environment:
+      ISSUER_URI: http://auth.localtest.me:8091
+  fakeid:
+    image: georgemc/fakeid:v0.0.1
+    ports:
+      - "8091:8091"
+    hostname: auth.localtest.me
+    environment:
+      FAKEID_ISSUER: http://auth.localtest.me:8091

@@ -30,6 +30,8 @@ import com.nimbusds.jwt.SignedJWT;
 import io.javalin.http.Context;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -37,6 +39,8 @@ import java.time.temporal.TemporalUnit;
 import java.util.*;
 
 public class FakeIdProvider {
+
+    private static final Logger LOG = LoggerFactory.getLogger(FakeIdProvider.class);
 
     private final String baseUrl;
     private final DiscoveryDocument discoveryDocument;
@@ -71,6 +75,7 @@ public class FakeIdProvider {
         grant.setSub(configuration.getClaims().get("name").toString());
         issuedTokens.put(accessToken, grant);
 
+        LOG.info("Token issued using grant type {} for client {}", grantTypeName, clientId);
         context.json(Map.of(
                 "access_token", accessToken,
                 "token_type", "Bearer",
@@ -123,6 +128,7 @@ public class FakeIdProvider {
                     .append("state=").append(authRequest.getState());
         }
 
+        LOG.info("Authorization response: {}", responseBuilder.toString());
         requests.put(authCode, authRequest);
         String redirect = responseBuilder.toString();
         context.redirect(redirect);
