@@ -20,11 +20,14 @@ package com.elevenware.fakeid;
  * #L%
  */
 
+import java.util.Set;
+
 public class Grant {
 
     private String clientId;
     private String sub;
     private String accessToken;
+    private Set<String> scopes;
 
     public String getClientId() {
         return clientId;
@@ -48,5 +51,13 @@ public class Grant {
 
     public void setAccessToken(String accessToken) {
         this.accessToken = accessToken;
+    }
+
+    public void setScope(Set<String> scopes) {
+        this.scopes = scopes;
+    }
+
+    public Set<String> getScopes() {
+        return scopes;
     }
 }
