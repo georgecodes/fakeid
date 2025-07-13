@@ -65,9 +65,12 @@ public class FakeIdProvider {
         String grantTypeName = context.formParam("grant_type");
         String scope = context.formParam("scope");
         Set<String> scopes = new HashSet<>();
-        for(String s: scope.split(" ")) {
-            scopes.add(s);
+        if(scope != null){
+            for(String s: scope.split(" ")) {
+                scopes.add(s);
+            }
         }
+
         String authCode = context.formParam("code");
         AuthRequest request = requests.get(context.formParam("code"));
         String clientId = request.getClientId();
