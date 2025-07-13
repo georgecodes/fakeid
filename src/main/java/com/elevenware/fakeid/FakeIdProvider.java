@@ -64,6 +64,10 @@ public class FakeIdProvider {
 
         String grantTypeName = context.formParam("grant_type");
         String scope = context.formParam("scope");
+        Set<String> scopes = new HashSet<>();
+        for(String s: scope.split(" ")) {
+            scopes.add(s);
+        }
         String authCode = context.formParam("code");
         AuthRequest request = requests.get(context.formParam("code"));
         String clientId = request.getClientId();
@@ -72,6 +76,7 @@ public class FakeIdProvider {
         Grant grant = new Grant();
         grant.setAccessToken(accessToken);
         grant.setClientId(request.getClientId());
+        grant.setScope(scopes);
         grant.setSub(configuration.getClaims().get("name").toString());
         issuedTokens.put(accessToken, grant);
 
@@ -80,7 +85,7 @@ public class FakeIdProvider {
                 "access_token", accessToken,
                 "token_type", "Bearer",
                 "expires_in", 3600,
-                "scope", "scope",
+                "scope", scope,
                 "issued_at", System.currentTimeMillis() / 1000L,
                 "client_id", clientId,
                 "grant_type", grantTypeName,
