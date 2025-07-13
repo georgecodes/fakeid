@@ -53,6 +53,14 @@ public class FakeIdApplication {
         
         var app = Javalin.create(c -> {
             c.jsonMapper(jsonMapper);
+            c.bundledPlugins.enableCors(cors -> {
+                cors.addRule(it -> {
+                    it.anyHost();
+                });
+            });
+            c.requestLogger.http((ctx, executionTimeMs) -> {
+                System.out.println(ctx.path());
+            });
                 })
                 .get("/.well-known/openid-configuration", provider::getDiscoveryDocument)
                 .get("/jwks", provider::jwksEndpoint)
