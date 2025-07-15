@@ -64,12 +64,17 @@ public class FakeIdProvider {
 
         String grantTypeName = context.formParam("grant_type");
         String scope = context.formParam("scope");
+        LOG.info("Token endpoint request parameters: {}", params);
         Set<String> scopes = new HashSet<>();
         if(scope != null){
             for(String s: scope.split(" ")) {
                 scopes.add(s);
             }
+        } else {
+            scope = "";
         }
+
+        LOG.info("Scopes requested {}", scope);
 
         String authCode = context.formParam("code");
         AuthRequest request = requests.get(context.formParam("code"));
@@ -105,6 +110,7 @@ public class FakeIdProvider {
         authRequest.setResponseType(params.get("response_type").get(0));
         authRequest.setState(params.get("state").get(0));
         authRequest.setNonce(params.get("nonce").get(0));
+        LOG.info("Auth Request for client {} with scopes {}", authRequest.getClientId(), authRequest.getScopes());
         StringBuilder responseBuilder = new StringBuilder()
                 .append(authRequest.getRedirectUri());
         char separator = '?';
