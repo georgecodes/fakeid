@@ -36,6 +36,8 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.JWTParser;
 import com.nimbusds.jwt.PlainJWT;
 
+import java.io.IOException;
+import java.net.ServerSocket;
 import java.text.ParseException;
 import java.util.Base64;
 import java.util.Date;
@@ -47,6 +49,7 @@ public class Configuration {
     private JWKSet jwks;
     private String issuer;
     private Map<String, Object> claims;
+    private int port = 0;
 
     public void setIssuer(String issuer) {
         this.issuer = issuer;
@@ -70,6 +73,14 @@ public class Configuration {
 
     public void setClaims(Map<String, Object> claims) {
         this.claims = claims;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
+    public void setPort(int port) {
+        this.port = port;
     }
 
     public static Configuration loadFromFile(String filePath) {
@@ -96,6 +107,10 @@ public class Configuration {
         setDefaultClaims(configuration);
         setDefaultJwks(configuration);
         return configuration;
+    }
+
+    public static Builder builder() {
+        return new Builder();
     }
 
     private static void setDefaultJwks(Configuration configuration) {
@@ -186,9 +201,66 @@ public class Configuration {
             configuration.setIssuer(setIssuer);
             return;
         }
-        configuration.setIssuer("http://localhost:8091");
+        configuration.setIssuer(String.format("http://localhost:%d", configuration.getPort()));
     }
 
+    public static class Builder {
 
+        private int port = 0;
+        private String issuer;
+        private JWKSet jwks;
+        private Map<String, Object> claims;
+
+        public Configuration build() {
+            Configuration configuration = new Configuration();
+            if(port == 0) {
+                try {
+                    ServerSocket serverSocket = new ServerSocket(0);
+                    port = serverSocket.getLocalPort();
+                    serverSocket.close();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            configuration.setPort(port);
+            if(issuer != null) {
+                configuration.setIssuer(issuer);
+            } else {
+                setDefaultIssuer(configuration);
+            }
+            if(jwks != null) {
+                configuration.setJwks(jwks);
+            } else {
+                setDefaultJwks(configuration);
+            }
+            if(claims != null) {
+                configuration.setClaims(claims);
+            } else {
+                setDefaultClaims(configuration);
+            }
+            return configuration;
+        }
+
+        public Builder jwks(JWKSet jwks) {
+            this.jwks = jwks;
+            return this;
+        }
+
+        public Builder issuer(String issuer) {
+            this.issuer = issuer;
+            return this;
+        }
+
+        public Builder claims(Map<String, Object> claims) {
+            this.claims = claims;
+            return this;
+        }
+
+        public Builder port(int port) {
+            this.port = port;
+            return this;
+        }
+
+    }
 
 }
