@@ -27,19 +27,56 @@ import io.javalin.json.JavalinJackson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Optional;
+
 public class FakeIdApplication {
 
     private static final Logger LOG = LoggerFactory.getLogger(FakeIdApplication.class);
+    private final Configuration configuration;
+    private Javalin server;
 
-    public static void main(String[] args) {
+    public FakeIdApplication(Configuration configuration) {
+        this.configuration = configuration;
+    }
 
-        LOG.info("Starting Fake ID");
-
+    public FakeIdApplication start() {
         JavalinJackson jsonMapper = new JavalinJackson();
 
         jsonMapper.getMapper()
                 .setSerializationInclusion(JsonInclude.Include.NON_NULL)
                 .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
+        var provider = new FakeIdProvider(configuration);
+
+        server = Javalin.create(c -> {
+                    c.jsonMapper(jsonMapper);
+                    c.bundledPlugins.enableCors(cors -> {
+                        cors.addRule(it -> {
+                            it.anyHost();
+                        });
+                    });
+                })
+                .get("/.well-known/openid-configuration", provider::getDiscoveryDocument)
+                .get("/jwks", provider::jwksEndpoint)
+                .get("/authorize", provider::authorizationEndpoint)
+                .post("/token", provider::tokenEndpoint)
+                .post("/token/introspect", provider::introspectionEndpoint)
+                .start(configuration.getPort());
+        LOG.info("Fake ID started");
+        return this;
+    }
+
+    public void stop() {
+        Optional.ofNullable(server).ifPresent(Javalin::stop);
+    }
+
+    public int port() {
+        return server.port();
+    }
+
+    public static void main(String[] args) {
+
+        LOG.info("Starting Fake ID");
+
         String configLocation = System.getenv("FAKEID_CONFIG_LOCATION");
         Configuration configuration;
         if (configLocation != null) {
@@ -49,26 +86,9 @@ public class FakeIdApplication {
             LOG.info("Loading default configuration");
             configuration = Configuration.defaultConfiguration();
         }
-        var provider = new FakeIdProvider(configuration);
-        
-        var app = Javalin.create(c -> {
-            c.jsonMapper(jsonMapper);
-            c.bundledPlugins.enableCors(cors -> {
-                cors.addRule(it -> {
-                    it.anyHost();
-                });
-            });
-            c.requestLogger.http((ctx, executionTimeMs) -> {
-                System.out.println(ctx.path());
-            });
-                })
-                .get("/.well-known/openid-configuration", provider::getDiscoveryDocument)
-                .get("/jwks", provider::jwksEndpoint)
-                .get("/authorize", provider::authorizationEndpoint)
-                .post("/token", provider::tokenEndpoint)
-                .post("/token/introspect", provider::introspectionEndpoint)
-                .start(8091);
-        LOG.info("Fake ID started");
+        new FakeIdApplication(configuration).start();
+
     }
+
 
 }
