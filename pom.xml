@@ -13,7 +13,25 @@
         <license.licenseName>apache_v2</license.licenseName>
         <license.inceptionYear>2025</license.inceptionYear>
     </properties>
+    <name>FakeID</name>
+    <description>A hands-free OIDC server with zero interaction</description>
+    <url>https://georgecodes.github.com/fakeid</url>
+    <licenses>
+        <license>
+            <name>Apache-2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+            <comments>A business-friendly OSS license</comments>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <name>George McIntosh</name>
+            <id>@georgecodes</id>
+        </developer>
+    </developers>
     <scm>
+        <url>scm:git:https://github.com/georgecodes/fakeid.git</url>
         <connection>scm:git:https://github.com/georgecodes/fakeid.git</connection>
     </scm>
 
@@ -95,15 +113,15 @@
                     <finalName>fakeid-all</finalName>
                     <appendAssemblyId>false</appendAssemblyId>
                 </configuration>
-                <executions>
-                    <execution>
-                        <id>assemble-all</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                    </execution>
-                </executions>
+<!--                <executions>-->
+<!--                    <execution>-->
+<!--                        <id>assemble-all</id>-->
+<!--                        <phase>package</phase>-->
+<!--                        <goals>-->
+<!--                            <goal>single</goal>-->
+<!--                        </goals>-->
+<!--                    </execution>-->
+<!--                </executions>-->
             </plugin>
             <plugin>
                 <groupId>org.sonatype.central</groupId>
@@ -141,6 +159,22 @@
                 </executions>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.11.2</version>
+                <configuration>
+                    <excludePackageNames>com.google.gson</excludePackageNames>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>license-maven-plugin</artifactId>
                 <version>2.6.0</version>
@@ -152,6 +186,7 @@
                         <id>first</id>
                         <goals>
                             <goal>update-file-header</goal>
+                            <goal>update-project-license</goal>
                         </goals>
                         <phase>process-sources</phase>
                         <configuration>
@@ -159,6 +194,7 @@
                                 <root>src/main/java</root>
                                 <root>src/test/java</root>
                             </roots>
+                            <licenseFile>LICENCE</licenseFile>
                         </configuration>
                     </execution>
                 </executions>
