@@ -13,6 +13,9 @@
         <license.licenseName>apache_v2</license.licenseName>
         <license.inceptionYear>2025</license.inceptionYear>
     </properties>
+    <scm>
+        <connection>scm:git:https://github.com/georgecodes/fakeid.git</connection>
+g    </scm>
 
     <dependencies>
         <dependency>
