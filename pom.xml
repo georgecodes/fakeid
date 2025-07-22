@@ -15,7 +15,7 @@
     </properties>
     <scm>
         <connection>scm:git:https://github.com/georgecodes/fakeid.git</connection>
-g    </scm>
+    </scm>
 
     <dependencies>
         <dependency>
