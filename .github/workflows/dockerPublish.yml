@@ -33,7 +33,7 @@ jobs:
         uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
         with:
           images: georgemc/fakeid
-          tags: v0.0.1
+          tags: v0.0.2-dev
 
       - name: Build and push Docker image
         id: push

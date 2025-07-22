@@ -206,12 +206,17 @@ public class Configuration {
 
     public static class Builder {
 
+        private boolean built;
         private int port = 0;
         private String issuer;
         private JWKSet jwks;
         private Map<String, Object> claims;
 
         public Configuration build() {
+            if(built) {
+                throw new IllegalStateException("This has already been built");
+            }
+            built = true;
             Configuration configuration = new Configuration();
             if(port == 0) {
                 try {

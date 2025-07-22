@@ -60,6 +60,7 @@ public class FakeIdApplication {
                 .get("/authorize", provider::authorizationEndpoint)
                 .post("/token", provider::tokenEndpoint)
                 .post("/token/introspect", provider::introspectionEndpoint)
+                .get("/userinfo", provider::userInfoEndpoint)
                 .start(configuration.getPort());
         LOG.info("Fake ID started");
         return this;

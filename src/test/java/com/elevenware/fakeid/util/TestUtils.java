@@ -1,4 +1,4 @@
-package com.elevenware.fakeid;
+package com.elevenware.fakeid.util;
 
 /*-
  * #%L
@@ -20,11 +20,21 @@ package com.elevenware.fakeid;
  * #L%
  */
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.StringTokenizer;
 
 public class TestUtils {
+
+    private static ObjectMapper MAPPER = new ObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_NULL);
+
+    public static ObjectMapper mapper() {
+        return MAPPER;
+    }
 
     public static Map<String, String> buildQueryMap(String query) {
         if (query == null) {
@@ -41,6 +51,19 @@ public class TestUtils {
             String value = currentParam[1];
             map.put(name, value);
         }
+        return map;
+    }
+
+    public static Map<String, String> convertStringToMap(String data) {
+        Map<String, String> map = new HashMap<>();
+        StringTokenizer tokenizer = new StringTokenizer(data, "&");
+
+        while (tokenizer.hasMoreTokens()) {
+            String token = tokenizer.nextToken();
+            String[] keyValue = token.split("=");
+            map.put(keyValue[0], keyValue[1]);
+        }
+
         return map;
     }
 

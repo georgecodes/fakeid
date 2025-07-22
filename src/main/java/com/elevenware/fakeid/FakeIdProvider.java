@@ -54,9 +54,13 @@ public class FakeIdProvider {
         this.discoveryDocument = DiscoveryDocument.create(baseUrl);
     }
 
-
     public void getDiscoveryDocument(@NotNull Context context) {
         context.json(discoveryDocument);
+    }
+
+    public void userInfoEndpoint(@NotNull Context context) {
+        Map<String, Object> claims = configuration.getClaims();
+        context.json(claims);
     }
 
     public void tokenEndpoint(@NotNull Context context) {
