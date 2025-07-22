@@ -3,7 +3,7 @@
 
     <groupId>com.elevenware</groupId>
     <artifactId>fakeid</artifactId>
-    <version>0.0.1</version>
+    <version>0.0.2-SNAPSHOT</version>
 
     <properties>
         <main.class>com.elevenware.fakeid.FakeIdApplication</main.class>
