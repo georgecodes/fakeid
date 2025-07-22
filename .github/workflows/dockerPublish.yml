@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'src/main/**'
+      - 'pom.xml'
     branches:
       - "main"
 
