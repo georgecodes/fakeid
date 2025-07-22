@@ -20,8 +20,8 @@ package com.elevenware.fakeid;
  * #L%
  */
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.elevenware.fakeid.util.FakeIdPort;
+import com.elevenware.fakeid.util.FakeIdTest;
 import com.nimbusds.jose.Algorithm;
 import com.nimbusds.jose.crypto.RSASSAVerifier;
 import com.nimbusds.jose.jwk.JWKSet;
@@ -30,7 +30,6 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -40,27 +39,23 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.StringTokenizer;
 
+import static com.elevenware.fakeid.util.TestUtils.buildQueryMap;
+import static com.elevenware.fakeid.util.TestUtils.mapper;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@FakeIdTest
 public class LibraryTests {
 
     private FakeIdApplication app;
-    private static ObjectMapper mapper = new ObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_NULL);
+    @FakeIdPort
+    private int port;
 
     @Test
     void defaultConfiguration() throws IOException, InterruptedException {
-
-        Configuration configuration = Configuration.builder()
-                .build();
-
-        app = new FakeIdApplication(configuration).start();
-        int port = app.port();
 
         HttpClient client = HttpClient.newHttpClient();
         HttpRequest request = HttpRequest.newBuilder()
@@ -69,7 +64,7 @@ public class LibraryTests {
                 .build();
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
         assertEquals(200, response.statusCode());
-        Map<String, String> discoveryDocument = mapper.readValue(response.body(), Map.class);
+        Map<String, String> discoveryDocument = mapper().readValue(response.body(), Map.class);
         assertEquals("http://localhost:" + port, discoveryDocument.get("issuer"));
 
     }
@@ -94,7 +89,7 @@ public class LibraryTests {
                 .build();
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
         assertEquals(200, response.statusCode());
-        Map<String, String> discoveryDocument = mapper.readValue(response.body(), Map.class);
+        Map<String, String> discoveryDocument = mapper().readValue(response.body(), Map.class);
         assertEquals("http://localhost:" + port, discoveryDocument.get("issuer"));
 
     }
@@ -129,7 +124,7 @@ public class LibraryTests {
                 .build();
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
         assertEquals(200, response.statusCode());
-        Map<String, String> discoveryDocument = mapper.readValue(response.body(), Map.class);
+        Map<String, String> discoveryDocument = mapper().readValue(response.body(), Map.class);
         assertEquals("http://localhost:" + port, discoveryDocument.get("issuer"));
 
         String req = new StringBuilder()
@@ -157,7 +152,7 @@ public class LibraryTests {
 
         assertEquals(uri.getHost(), "example.com");
         String query = uri.getQuery();
-        Map<String, String> queryParams = convertStringToMap(query);
+        Map<String, String> queryParams = buildQueryMap(query);
         String idTokenValue = queryParams.get("id_token");
         SignedJWT idToken = SignedJWT.parse(idTokenValue);
         RSASSAVerifier verifier = new RSASSAVerifier(jwk);
@@ -166,24 +161,6 @@ public class LibraryTests {
         assertEquals("jeff@example.com", claims.getSubject());
         Map<String, String> additionalClaims = (Map<String, String>) claims.getClaim("additionalClaims");
         assertEquals("claimValue", additionalClaims.get("claim"));
-    }
-
-    @AfterEach
-    void tearDown() throws IOException {
-        Optional.ofNullable(app).ifPresent(FakeIdApplication::stop);
-    }
-
-    public Map<String, String> convertStringToMap(String data) {
-        Map<String, String> map = new HashMap<>();
-        StringTokenizer tokenizer = new StringTokenizer(data, "&");
-
-        while (tokenizer.hasMoreTokens()) {
-            String token = tokenizer.nextToken();
-            String[] keyValue = token.split("=");
-            map.put(keyValue[0], keyValue[1]);
-        }
-
-        return map;
     }
 
 }

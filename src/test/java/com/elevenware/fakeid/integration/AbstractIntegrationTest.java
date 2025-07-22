@@ -22,7 +22,6 @@ package com.elevenware.fakeid.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.jwk.JWKSet;
-import org.apache.commons.lang3.RandomStringUtils;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -34,7 +33,7 @@ import java.net.http.HttpResponse;
 import java.text.ParseException;
 import java.util.Map;
 
-import static com.elevenware.fakeid.TestUtils.buildQueryMap;
+import static com.elevenware.fakeid.util.TestUtils.buildQueryMap;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.fail;
