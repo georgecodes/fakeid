@@ -25,6 +25,7 @@ import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.jwk.JWK;
+import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import io.javalin.http.Context;
@@ -210,4 +211,5 @@ public class FakeIdProvider {
     public Map<String, Grant> getIssuedTokens() {
         return issuedTokens;
     }
+
 }

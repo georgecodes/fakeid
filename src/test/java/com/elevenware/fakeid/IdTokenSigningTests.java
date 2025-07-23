@@ -23,6 +23,7 @@ package com.elevenware.fakeid;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.crypto.RSASSAVerifier;
+import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.KeyUse;
 import com.nimbusds.jose.jwk.RSAKey;
@@ -121,10 +122,11 @@ public class IdTokenSigningTests {
         String nonce = "123";
         String aud = "client";
 
-
-        FakeIdProvider fakeIdProvider = new FakeIdProvider(Configuration.builder()
+        Configuration cfg = Configuration.builder()
                 .signingAlgorithm(JWSAlgorithm.PS256)
-                .build());
+                .build();
+
+        FakeIdProvider fakeIdProvider = new FakeIdProvider(cfg);
         AuthRequest request = new AuthRequest();
         request.setNonce(nonce);
         request.setClientId(aud);
@@ -144,8 +146,10 @@ public class IdTokenSigningTests {
         JWSAlgorithm algorithm = jwt.getHeader().getAlgorithm();
         assertEquals(JWSAlgorithm.PS256, algorithm);
 
-//        RSASSAVerifier verifier = new RSASSAVerifier(theJwk.toRSAPublicKey());
-//        assertTrue(jwt.verify(verifier));
+        JWKSet jwks = cfg.getJwks();
+        JWK theJwk = jwks.getKeys().iterator().next();
+        RSASSAVerifier verifier = new RSASSAVerifier(theJwk.toRSAKey().toRSAPublicKey());
+        assertTrue(jwt.verify(verifier));
 
     }
 
