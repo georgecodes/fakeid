@@ -180,7 +180,6 @@ public class FakeIdProvider {
         }
     }
 
-
     public void jwksEndpoint(@NotNull Context context) {
         context.json(configuration.getJwks().toPublicJWKSet().toJSONObject(true));
     }
@@ -202,5 +201,13 @@ public class FakeIdProvider {
         } else {
             context.json(Map.of("active", false));
         }
+    }
+
+    public Map<String, AuthRequest> getRequests() {
+        return requests;
+    }
+
+    public Map<String, Grant> getIssuedTokens() {
+        return issuedTokens;
     }
 }

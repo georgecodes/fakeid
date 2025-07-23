@@ -26,6 +26,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.nimbusds.jose.Algorithm;
 import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.KeyUse;
@@ -50,6 +51,7 @@ public class Configuration {
     private String issuer;
     private Map<String, Object> claims;
     private int port = 0;
+    private JWSAlgorithm signingAlgorithm = JWSAlgorithm.RS256;
 
     public void setIssuer(String issuer) {
         this.issuer = issuer;
@@ -81,6 +83,14 @@ public class Configuration {
 
     public void setPort(int port) {
         this.port = port;
+    }
+
+    public JWSAlgorithm getSigningAlgorithm() {
+        return signingAlgorithm;
+    }
+
+    public void setSigningAlgorithm(JWSAlgorithm algorithm) {
+        this.signingAlgorithm = algorithm;
     }
 
     public static Configuration loadFromFile(String filePath) {
@@ -124,7 +134,7 @@ public class Configuration {
                 RSAKey key = RSAKey.parseFromPEMEncodedObjects(setSigningKey).toRSAKey();
                 key = new RSAKey.Builder(key.toRSAPublicKey())
                         .privateKey(key.toRSAPrivateKey())
-                        .algorithm(Algorithm.parse("RS256"))
+                        .algorithm(configuration.getSigningAlgorithm())
                         .keyID("signingKey")
                         .keyUse(KeyUse.SIGNATURE)
                         .build();
@@ -139,7 +149,7 @@ public class Configuration {
                     .keyUse(KeyUse.SIGNATURE)
                     .keyID("signingKey")
                     .issueTime(new Date())
-                    .algorithm(Algorithm.parse("RS256"))
+                    .algorithm(configuration.getSigningAlgorithm())
                     .generate();
             JWKSet jwks = new JWKSet(jwk);
             configuration.setJwks(jwks);
@@ -211,6 +221,7 @@ public class Configuration {
         private String issuer;
         private JWKSet jwks;
         private Map<String, Object> claims;
+        private JWSAlgorithm algorithm = JWSAlgorithm.RS256;
 
         public Configuration build() {
             if(built) {
@@ -228,6 +239,7 @@ public class Configuration {
                 }
             }
             configuration.setPort(port);
+            configuration.setSigningAlgorithm(algorithm);
             if(issuer != null) {
                 configuration.setIssuer(issuer);
             } else {
@@ -243,6 +255,7 @@ public class Configuration {
             } else {
                 setDefaultClaims(configuration);
             }
+
             return configuration;
         }
 
@@ -258,6 +271,11 @@ public class Configuration {
 
         public Builder claims(Map<String, Object> claims) {
             this.claims = claims;
+            return this;
+        }
+
+        public Builder signingAlgorithm(JWSAlgorithm algorithm) {
+            this.algorithm = algorithm;
             return this;
         }
 
