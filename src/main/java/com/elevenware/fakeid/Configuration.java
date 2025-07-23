@@ -36,6 +36,8 @@ import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.JWTParser;
 import com.nimbusds.jwt.PlainJWT;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -47,11 +49,13 @@ import java.util.UUID;
 
 public class Configuration {
 
+    private static final Logger LOG = LoggerFactory.getLogger(Configuration.class);
+
     private JWKSet jwks;
     private String issuer;
     private Map<String, Object> claims;
-    private int port = 0;
-    private JWSAlgorithm signingAlgorithm = JWSAlgorithm.RS256;
+    private int port = 8091;
+    private JWSAlgorithm signingAlgorithm;
 
     public void setIssuer(String issuer) {
         this.issuer = issuer;
@@ -74,6 +78,7 @@ public class Configuration {
     }
 
     public void setClaims(Map<String, Object> claims) {
+        LOG.info("Setting claims to {}", claims);
         this.claims = claims;
     }
 
@@ -82,6 +87,7 @@ public class Configuration {
     }
 
     public void setPort(int port) {
+        LOG.info("Setting port to {}", port);
         this.port = port;
     }
 
@@ -90,10 +96,12 @@ public class Configuration {
     }
 
     public void setSigningAlgorithm(JWSAlgorithm algorithm) {
+        LOG.info("Setting signing algorithm to {}", algorithm);
         this.signingAlgorithm = algorithm;
     }
 
     public static Configuration loadFromFile(String filePath) {
+        LOG.info("Loading configuration from file {}", filePath);
         Configuration configuration;
         ObjectMapper objectMapper = new ObjectMapper();
         SimpleModule module = new SimpleModule();
@@ -107,12 +115,34 @@ public class Configuration {
         }
         setDefaultIssuer(configuration);
         setDefaultClaims(configuration);
+        setDefaultSigningAlgorithm(configuration);
         setDefaultJwks(configuration);
         return configuration;
     }
 
+    private static void setDefaultSigningAlgorithm(Configuration configuration) {
+        LOG.info("Setting default signing algorithm");
+        if(configuration.getSigningAlgorithm() != null) {
+            LOG.info("Signing algorithm already set to {} - using that", configuration.getSigningAlgorithm());
+            return;
+        }
+        String setSigningAlgorithm = System.getenv("FAKEID_SIGNING_ALG");
+        if(setSigningAlgorithm == null) {
+            setSigningAlgorithm = System.getenv("FAKEID_SIGNING_ALGORITHM");
+        }
+        if(setSigningAlgorithm != null) {
+            LOG.info("Setting default signing algorithm to {}", setSigningAlgorithm);
+            JWSAlgorithm algorithm = JWSAlgorithm.parse(setSigningAlgorithm);
+            configuration.setSigningAlgorithm(algorithm);
+        } else {
+            LOG.info("No signing algorithm set, setting to RS256");
+            configuration.setSigningAlgorithm(JWSAlgorithm.RS256);
+        }
+    }
+
     public static Configuration defaultConfiguration() {
         Configuration configuration = new Configuration();
+        setDefaultSigningAlgorithm(configuration);
         setDefaultIssuer(configuration);
         setDefaultClaims(configuration);
         setDefaultJwks(configuration);
@@ -217,7 +247,7 @@ public class Configuration {
     public static class Builder {
 
         private boolean built;
-        private int port = 0;
+        private int port = -1;
         private String issuer;
         private JWKSet jwks;
         private Map<String, Object> claims;
@@ -238,8 +268,11 @@ public class Configuration {
                     throw new RuntimeException(e);
                 }
             }
-            configuration.setPort(port);
+
             configuration.setSigningAlgorithm(algorithm);
+            if( port != -1) {
+                configuration.setPort(port);
+            }
             if(issuer != null) {
                 configuration.setIssuer(issuer);
             } else {
@@ -284,6 +317,9 @@ public class Configuration {
             return this;
         }
 
+        public Builder randomPort() {
+            return port(0);
+        }
     }
 
 }

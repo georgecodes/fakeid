@@ -63,10 +63,13 @@ Configuration options are
 
 | Environment variable | Usage |
 |----------------------|-------|
+| FAKEID_CONFIG_LOCATION | This determines the location of the json config file, should you choose to use this.
 | FAKEID_ISSUER       | This is the issuer used. It's the base url for all operations, as well as the issuer claim in id tokens
 | FAKEID_SIGNING_KEY   | This is a base64 encoded PEM-format RSA private key. It will be used for signing id tokens, and will be available on the JWKS uri of Fake ID
 | FAKEID_SAMPLE_CLAIMS | This is a template for returned id tokens. It can be either a full JWT or simply some base 64 encoded JSON
 | FAKEID_SAMPLE_JWT    | This is merely an alias for FAKEID_SAMPLE_CLAIMS. Either can be used for either chosen format
+| FAKEID_SIGNING_ALGORITHM | The JWS algorithm used to sign id tokens. Currently RSA-based algorithms only supported - RS256, RS384, RS512, PS256, PS384, PS512. Defaults to RS256
+| FAKEID_SIGNING_ALG | Shorthand for FAKEID_SIGNING_ALGORITHM
 
 If you do not provide FAKEID_ISSUER it will default to http://localhost:8091
 

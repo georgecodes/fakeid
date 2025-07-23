@@ -34,7 +34,7 @@ import java.util.Optional;
 public class FakeIdExtension implements AfterEachCallback, BeforeTestExecutionCallback {
 
     private Configuration cfg;
-    private Configuration.Builder builder = Configuration.builder();
+    private Configuration.Builder builder = Configuration.builder().randomPort();
     private FakeIdApplication app;
 
     @Override
@@ -42,7 +42,7 @@ public class FakeIdExtension implements AfterEachCallback, BeforeTestExecutionCa
         Optional.ofNullable(app).ifPresent(FakeIdApplication::stop);
         cfg = null;
         app = null;
-        builder = Configuration.builder();
+        builder = Configuration.builder().randomPort();
     }
 
     @Override

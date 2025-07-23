@@ -40,6 +40,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -50,6 +51,28 @@ public class ConfigurationTests {
 
         Configuration config = Configuration.defaultConfiguration();
         assertNotNull(config.getIssuer());
+        assertEquals("http://localhost:8091", config.getIssuer());
+
+        Map<String, Object> claims = config.getClaims();
+        assertNotNull(claims);
+        assertTrue(claims.containsKey("name"));
+        assertTrue(claims.containsKey("email"));
+
+        JWKSet jwkSet = config.getJwks();
+        assertNotNull(jwkSet);
+        assertFalse(jwkSet.isEmpty());
+        JWK jwk = jwkSet.getKeyByKeyId("signingKey");
+        assertNotNull(jwk);
+        assertTrue(jwk.isPrivate());
+
+    }
+
+    @Test
+    void randomPort() {
+
+        Configuration config = Configuration.builder().randomPort().build();
+        assertNotNull(config.getIssuer());
+        assertNotEquals(8081, config.getPort());
 
         Map<String, Object> claims = config.getClaims();
         assertNotNull(claims);
