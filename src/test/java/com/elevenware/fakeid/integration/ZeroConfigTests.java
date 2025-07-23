@@ -41,10 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@EnabledIfSystemProperty(named = "fakeid.integration.tests", matches = "true")
 public class ZeroConfigTests extends AbstractIntegrationTest {
-
-
 
     @Test
     void discoveryDocumentHasDefaultIssuer() throws IOException, InterruptedException {

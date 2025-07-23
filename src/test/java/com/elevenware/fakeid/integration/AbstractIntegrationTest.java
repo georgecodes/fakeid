@@ -22,6 +22,8 @@ package com.elevenware.fakeid.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.jwk.JWKSet;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -38,6 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.fail;
 
+@Tag("IntegrationTest")
 public abstract class AbstractIntegrationTest {
 
     private static ObjectMapper mapper = new ObjectMapper();

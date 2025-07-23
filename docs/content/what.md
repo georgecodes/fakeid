@@ -23,7 +23,8 @@ your application, will simply run off to Fake ID, and everything happens automat
  /.well-known/openid-configuration - this is where discovery happens. It prevents clients having to be configured with various other endpoints etc
  /authorize - where the initial authorisation request goes. This automatically redirects back to the relying party with state,an auth code and any requested tokens
  /token - where the relying party can exchange an auth code for access and id tokens
- /jwsk - where the public key used to sign the id tokens will be available, so that relying parties can verify id tokens
+ /jwks - where the public key used to sign the id tokens will be available, so that relying parties can verify id tokens
+ /userinfo - returns the configured claims in JSON format
 
 ```
 
