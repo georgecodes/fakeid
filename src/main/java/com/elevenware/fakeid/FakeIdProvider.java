@@ -25,6 +25,7 @@ import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.jwk.JWK;
+import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import io.javalin.http.Context;
@@ -180,7 +181,6 @@ public class FakeIdProvider {
         }
     }
 
-
     public void jwksEndpoint(@NotNull Context context) {
         context.json(configuration.getJwks().toPublicJWKSet().toJSONObject(true));
     }
@@ -203,4 +203,13 @@ public class FakeIdProvider {
             context.json(Map.of("active", false));
         }
     }
+
+    public Map<String, AuthRequest> getRequests() {
+        return requests;
+    }
+
+    public Map<String, Grant> getIssuedTokens() {
+        return issuedTokens;
+    }
+
 }
