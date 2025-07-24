@@ -23,6 +23,8 @@ package com.elevenware.fakeid.util;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -54,17 +56,17 @@ public class TestUtils {
         return map;
     }
 
-    public static Map<String, String> convertStringToMap(String data) {
-        Map<String, String> map = new HashMap<>();
-        StringTokenizer tokenizer = new StringTokenizer(data, "&");
-
-        while (tokenizer.hasMoreTokens()) {
-            String token = tokenizer.nextToken();
-            String[] keyValue = token.split("=");
-            map.put(keyValue[0], keyValue[1]);
+    public static String getFormDataAsString(Map<String, String> formData) {
+        StringBuilder formBodyBuilder = new StringBuilder();
+        for (Map.Entry<String, String> singleEntry : formData.entrySet()) {
+            if (formBodyBuilder.length() > 0) {
+                formBodyBuilder.append("&");
+            }
+            formBodyBuilder.append(URLEncoder.encode(singleEntry.getKey(), StandardCharsets.UTF_8));
+            formBodyBuilder.append("=");
+            formBodyBuilder.append(URLEncoder.encode(singleEntry.getValue(), StandardCharsets.UTF_8));
         }
-
-        return map;
+        return formBodyBuilder.toString();
     }
 
 }
