@@ -37,6 +37,7 @@ import org.mockito.Mockito;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -56,6 +57,7 @@ public class IdTokenSigningTests {
         AuthRequest request = new AuthRequest();
         request.setNonce(nonce);
         request.setClientId(aud);
+        request.setScopes(Set.of("openid"));
         fakeIdProvider.getRequests().put(code, request);
         Context context = Mockito.mock(Context.class);
         when(context.formParam("grant_type")).thenReturn("authorization_code");
@@ -94,6 +96,7 @@ public class IdTokenSigningTests {
         AuthRequest request = new AuthRequest();
         request.setNonce(nonce);
         request.setClientId(aud);
+        request.setScopes(Set.of("openid"));
         fakeIdProvider.getRequests().put(code, request);
         Context context = Mockito.mock(Context.class);
         when(context.formParam("grant_type")).thenReturn("authorization_code");
@@ -130,6 +133,7 @@ public class IdTokenSigningTests {
         AuthRequest request = new AuthRequest();
         request.setNonce(nonce);
         request.setClientId(aud);
+        request.setScopes(Set.of("openid"));
         fakeIdProvider.getRequests().put(code, request);
         Context context = Mockito.mock(Context.class);
         when(context.formParam("grant_type")).thenReturn("authorization_code");

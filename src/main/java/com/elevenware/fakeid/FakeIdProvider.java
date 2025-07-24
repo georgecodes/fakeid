@@ -65,45 +65,58 @@ public class FakeIdProvider {
     }
 
     public void tokenEndpoint(@NotNull Context context) {
-        Map<String, List<String>> params = context.formParamMap();
 
+        Map<String, List<String>> params = context.formParamMap();
         String grantTypeName = context.formParam("grant_type");
         String scope = context.formParam("scope");
+        String authCode = context.formParam("code");
+
         LOG.info("Token endpoint request parameters: {}", params);
-        Set<String> scopes = new HashSet<>();
-        if(scope != null){
-            for(String s: scope.split(" ")) {
-                scopes.add(s);
-            }
-        } else {
-            scope = "";
+
+        switch (grantTypeName) {
+            case "authorization_code":
+                context.json(authCodeGrant(authCode, scope));
+                break;
+            case "client_credentials":
+                Map<String, Object> response = clientCredentialsGrant(authCode, scope);
+                context.json(response);
+                break;
         }
 
-        LOG.info("Scopes requested {}", scope);
-
-        String authCode = context.formParam("code");
-        AuthRequest request = requests.get(context.formParam("code"));
-        String clientId = request.getClientId();
-        String idToken = idToken(request.getNonce(), clientId);
-        String accessToken = RandomStringUtils.randomAlphanumeric(32);
-        Grant grant = new Grant();
-        grant.setAccessToken(accessToken);
-        grant.setClientId(request.getClientId());
-        grant.setScope(scopes);
-        grant.setSub(configuration.getClaims().get("name").toString());
-        issuedTokens.put(accessToken, grant);
-
-        LOG.info("Token issued using grant type {} for client {}", grantTypeName, clientId);
-        context.json(Map.of(
-                "access_token", accessToken,
-                "token_type", "Bearer",
-                "expires_in", 3600,
-                "scope", scope,
-                "issued_at", System.currentTimeMillis() / 1000L,
-                "client_id", clientId,
-                "grant_type", grantTypeName,
-                "id_token", idToken
-        ));
+//        Set<String> scopes = new HashSet<>();
+//        if(scope != null){
+//            for(String s: scope.split(" ")) {
+//                scopes.add(s);
+//            }
+//        } else {
+//            scope = "";
+//        }
+//
+//        LOG.info("Scopes requested {}", scope);
+//
+//        String authCode = context.formParam("code");
+//        AuthRequest request = requests.get(authCode);
+//        String clientId = request.getClientId();
+//        String idToken = idToken(request.getNonce(), clientId);
+//        String accessToken = RandomStringUtils.randomAlphanumeric(32);
+//        Grant grant = new Grant();
+//        grant.setAccessToken(accessToken);
+//        grant.setClientId(request.getClientId());
+//        grant.setScope(scopes);
+//        grant.setSub(configuration.getClaims().get("name").toString());
+//        issuedTokens.put(accessToken, grant);
+//
+//        LOG.info("Token issued using grant type {} for client {}", grantTypeName, clientId);
+//        context.json(Map.of(
+//                "access_token", accessToken,
+//                "token_type", "Bearer",
+//                "expires_in", 3600,
+//                "scope", scope,
+//                "issued_at", System.currentTimeMillis() / 1000L,
+//                "client_id", clientId,
+//                "grant_type", grantTypeName,
+//                "id_token", idToken
+//        ));
     }
 
     public void authorizationEndpoint(@NotNull Context context) {
@@ -114,7 +127,9 @@ public class FakeIdProvider {
         authRequest.setRedirectUri(params.get("redirect_uri").get(0));
         authRequest.setResponseType(params.get("response_type").get(0));
         authRequest.setState(params.get("state").get(0));
-        authRequest.setNonce(params.get("nonce").get(0));
+        if(params.containsKey("nonce")) {
+            authRequest.setNonce(params.get("nonce").get(0));
+        }
         LOG.info("Auth Request for client {} with scopes {}", authRequest.getClientId(), authRequest.getScopes());
         StringBuilder responseBuilder = new StringBuilder()
                 .append(authRequest.getRedirectUri());
@@ -210,6 +225,72 @@ public class FakeIdProvider {
 
     public Map<String, Grant> getIssuedTokens() {
         return issuedTokens;
+    }
+
+    private Map<String, Object> authCodeGrant(String authCode, String scope) {
+        AuthRequest request = requests.get(authCode);
+        String clientId = request.getClientId();
+        String idToken = null;
+        Set<String> scopes = request.getScopes();
+        if(scopes == null) {
+            scopes = Collections.emptySet();
+        }
+        if(scope == null || scopes.isEmpty()) {
+            scope = String.join(" ", scopes);
+        }
+        if(scope.contains("openid")) {
+            idToken = idToken(request.getNonce(), clientId);
+        }
+        String accessToken = RandomStringUtils.randomAlphanumeric(32);
+        Grant grant = new Grant();
+        grant.setAccessToken(accessToken);
+        grant.setClientId(request.getClientId());
+        grant.setScope(scopes);
+        grant.setSub(configuration.getClaims().get("name").toString());
+        issuedTokens.put(accessToken, grant);
+
+        LOG.info("Token issued using auth code grant for client {}", clientId);
+        Map<String,Object> res = new HashMap<>();
+        res.put("access_token", accessToken);
+        res.put("token_type", "Bearer");
+        res.put("expires_in", 3600);
+        res.put("scope", scope);
+        res.put("issued_at", System.currentTimeMillis() / 1000L);
+        res.put("client_id", clientId);
+        res.put("grant_type", "authorization_code");
+        if(idToken != null) {
+            res.put("id_token", idToken);
+        }
+        return res;
+    }
+
+    private Map<String, Object> clientCredentialsGrant(String clientId, String scope) {
+        String accessToken = RandomStringUtils.randomAlphanumeric(32);
+        Set<String> scopes = new HashSet<>();
+        if(scope != null){
+            for(String s: scope.split(" ")) {
+                scopes.add(s);
+            }
+        } else {
+            scope = "";
+        }
+        Grant grant = new Grant();
+        grant.setAccessToken(accessToken);
+        grant.setClientId(clientId);
+        grant.setScope(scopes);
+        grant.setSub(configuration.getClaims().get("name").toString());
+        issuedTokens.put(accessToken, grant);
+
+        LOG.info("Token issued using client credentials grant for client {}", clientId);
+        Map<String,Object> res = new HashMap<>();
+        res.put("access_token", accessToken);
+        res.put("token_type", "Bearer");
+        res.put("expires_in", 3600);
+        res.put("scope", scope);
+        res.put("issued_at", System.currentTimeMillis() / 1000L);
+        res.put("client_id", clientId);
+        res.put("grant_type", "client_credentials");
+        return res;
     }
 
 }
