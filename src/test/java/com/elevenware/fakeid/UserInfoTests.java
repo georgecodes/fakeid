@@ -63,7 +63,7 @@ public class UserInfoTests {
 
     @ConfigModifier
     void addCustomClaims(Configuration.Builder builder) {
-        builder.claims(Map.of("name", "Ted", "magicClaim", "Perform magic"));
+        builder.claims(Map.of("name", "Ted", "magicClaim", "Perform magic", "sub", "Ted"));
     }
 
 }

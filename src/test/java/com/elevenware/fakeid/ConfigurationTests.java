@@ -42,6 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ConfigurationTests {
@@ -57,6 +58,7 @@ public class ConfigurationTests {
         assertNotNull(claims);
         assertTrue(claims.containsKey("name"));
         assertTrue(claims.containsKey("email"));
+        assertTrue(claims.containsKey("sub"));
 
         JWKSet jwkSet = config.getJwks();
         assertNotNull(jwkSet);
@@ -92,7 +94,8 @@ public class ConfigurationTests {
     void fileBasedWithClaimsOnly(@TempDir File tmp) throws IOException {
         Map<String, Object> claims = Map.of(
                 "name", "Jim Dev",
-                "email", "jim@example.com"
+                "email", "jim@example.com",
+                "sub", "Jim Dev"
         );
         createConfig(tmp, Map.of("claims", claims));
         Configuration config = Configuration.loadFromFile(tmp.getPath() + "/config.json");
@@ -114,6 +117,22 @@ public class ConfigurationTests {
     }
 
     @Test
+    void claimMustHaveSub(@TempDir File tmp) throws IOException {
+        Map<String, Object> claims = Map.of(
+                "name", "Jim Dev",
+                "email", "jim@example.com"
+        );
+        createConfig(tmp, Map.of("claims", claims));
+        RuntimeException runtimeException = assertThrows(RuntimeException.class, () -> Configuration.loadFromFile(tmp.getPath() + "/config.json"));
+        Throwable cause = runtimeException.getCause();
+        while (cause.getCause() != null) {
+            cause = cause.getCause();
+        }
+        assertTrue(cause instanceof ConfigurationException);
+
+    }
+
+    @Test
     void fileBasedWithJwksOnly(@TempDir File tmp) throws IOException, JOSEException {
         RSAKey theJwk = new RSAKeyGenerator(2048)
                 .keyUse(KeyUse.SIGNATURE)
@@ -131,6 +150,7 @@ public class ConfigurationTests {
         assertNotNull(claims);
         assertTrue(claims.containsKey("name"));
         assertTrue(claims.containsKey("email"));
+        assertTrue(claims.containsKey("sub"));
 
         JWKSet jwkSet = config.getJwks();
         assertNotNull(jwkSet);
@@ -152,6 +172,7 @@ public class ConfigurationTests {
         assertEquals("https://auth.example.localhost.com", config.getIssuer());
         Map<String, Object> claims = config.getClaims();
         assertNotNull(claims);
+        assertTrue(claims.containsKey("sub"));
         assertTrue(claims.containsKey("name"));
         assertTrue(claims.containsKey("email"));
 

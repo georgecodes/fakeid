@@ -112,7 +112,7 @@ public class LibraryTests {
         Configuration configuration = Configuration.builder()
                 .port(port)
                 .jwks(jwks)
-                .claims(Map.of("name", "jeff@example.com", "additionalClaims", Map.of("claim", "claimValue")))
+                .claims(Map.of("sub", "jeff@example.com", "additionalClaims", Map.of("claim", "claimValue")))
                 .build();
 
         app = new FakeIdApplication(configuration).start();

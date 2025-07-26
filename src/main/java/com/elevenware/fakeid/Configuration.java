@@ -78,6 +78,9 @@ public class Configuration {
     }
 
     public void setClaims(Map<String, Object> claims) {
+        if(!claims.containsKey("sub")) {
+            throw new ConfigurationException("Claims must contain sub key");
+        }
         LOG.info("Setting claims to {}", claims);
         this.claims = claims;
     }
@@ -109,8 +112,8 @@ public class Configuration {
         objectMapper.registerModule(module);
         try {
             configuration = objectMapper.readValue(new java.io.File(filePath), Configuration.class);
-        } catch (Exception e) {
-            e.printStackTrace();
+        }
+        catch (Exception e) {
             throw new RuntimeException("Failed to load configuration from file: " + filePath, e);
         }
         setDefaultIssuer(configuration);
@@ -228,6 +231,7 @@ public class Configuration {
         try {
             JWT jwt = JWTParser.parse(sampleClaims);
             return jwt.getJWTClaimsSet().getClaims();
+
         } catch (ParseException e) {
             throw new RuntimeException(e);
         }

@@ -93,7 +93,7 @@ public class EnvVarTests extends AbstractIntegrationTest {
 
         assertEquals(nonce, claims.getClaim("nonce"));
         assertEquals("Billy Otheruser", claims.getSubject());
-        assertEquals("Billy Otheruser", claims.getClaim("name"));
+        assertEquals("Billy Otheruser", claims.getClaim("sub"));
         assertEquals("billy@example.com", claims.getClaim("email"));
         assertEquals("http://localhost:8092", claims.getIssuer());
         assertEquals(clientId, claims.getAudience().get(0));

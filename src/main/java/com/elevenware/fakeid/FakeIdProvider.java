@@ -62,9 +62,6 @@ public class FakeIdProvider {
     public void userInfoEndpoint(@NotNull Context context) {
         Map<String, Object> claims = configuration.getClaims();
         String name = (String) claims.get("name");
-        if(!claims.containsKey("sub")){
-            claims.put("sub", name);
-        }
         context.json(claims);
     }
 
@@ -118,7 +115,7 @@ public class FakeIdProvider {
             Grant grant = new Grant();
             grant.setAccessToken(accessToken);
             grant.setClientId(params.get("client_id").get(0));
-            grant.setSub(configuration.getClaims().get("name").toString());
+            grant.setSub(configuration.getClaims().get("sub").toString());
             grant.setScope(authRequest.getScopes());
             issuedTokens.put(accessToken, grant);
             responseBuilder.append(separator)
@@ -143,7 +140,7 @@ public class FakeIdProvider {
 
     private String idToken(String nonce, String clientId) {
         JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder();
-        claimsBuilder.subject(configuration.getClaims().get("name").toString());
+        claimsBuilder.subject(configuration.getClaims().get("sub").toString());
         for(Map.Entry<String, Object> claim: configuration.getClaims().entrySet()) {
             claimsBuilder.claim(claim.getKey(), claim.getValue());
         }
