@@ -4,8 +4,8 @@ test:
 .PHONY: verify
 verify: test itests
 
-build:
-	@docker build -t fakeid .
+buildlocal:
+	@docker buildx build --load --platform=linux/arm64,linux/amd64 -t fakeid .
 
 compose:
 	@docker compose -f docker-compose-tests.yml down

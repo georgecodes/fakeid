@@ -211,6 +211,7 @@ public class Configuration {
         }
         configuration.setClaims(Map.of(
                 "name", "John C. Developer",
+                "sub", "John C. Developer",
                 "email", "john@developer.com"));
     }
 

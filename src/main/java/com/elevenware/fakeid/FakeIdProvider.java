@@ -61,6 +61,10 @@ public class FakeIdProvider {
 
     public void userInfoEndpoint(@NotNull Context context) {
         Map<String, Object> claims = configuration.getClaims();
+        String name = (String) claims.get("name");
+        if(!claims.containsKey("sub")){
+            claims.put("sub", name);
+        }
         context.json(claims);
     }
 
@@ -70,53 +74,21 @@ public class FakeIdProvider {
         String grantTypeName = context.formParam("grant_type");
         String scope = context.formParam("scope");
         String authCode = context.formParam("code");
+        String clientId = context.formParam("client_id");
 
         LOG.info("Token endpoint request parameters: {}", params);
+        LOG.info("Grant type: {}", grantTypeName);
 
         switch (grantTypeName) {
             case "authorization_code":
                 context.json(authCodeGrant(authCode, scope));
                 break;
             case "client_credentials":
-                Map<String, Object> response = clientCredentialsGrant(authCode, scope);
+                Map<String, Object> response = clientCredentialsGrant(clientId, scope);
                 context.json(response);
                 break;
         }
 
-//        Set<String> scopes = new HashSet<>();
-//        if(scope != null){
-//            for(String s: scope.split(" ")) {
-//                scopes.add(s);
-//            }
-//        } else {
-//            scope = "";
-//        }
-//
-//        LOG.info("Scopes requested {}", scope);
-//
-//        String authCode = context.formParam("code");
-//        AuthRequest request = requests.get(authCode);
-//        String clientId = request.getClientId();
-//        String idToken = idToken(request.getNonce(), clientId);
-//        String accessToken = RandomStringUtils.randomAlphanumeric(32);
-//        Grant grant = new Grant();
-//        grant.setAccessToken(accessToken);
-//        grant.setClientId(request.getClientId());
-//        grant.setScope(scopes);
-//        grant.setSub(configuration.getClaims().get("name").toString());
-//        issuedTokens.put(accessToken, grant);
-//
-//        LOG.info("Token issued using grant type {} for client {}", grantTypeName, clientId);
-//        context.json(Map.of(
-//                "access_token", accessToken,
-//                "token_type", "Bearer",
-//                "expires_in", 3600,
-//                "scope", scope,
-//                "issued_at", System.currentTimeMillis() / 1000L,
-//                "client_id", clientId,
-//                "grant_type", grantTypeName,
-//                "id_token", idToken
-//        ));
     }
 
     public void authorizationEndpoint(@NotNull Context context) {
