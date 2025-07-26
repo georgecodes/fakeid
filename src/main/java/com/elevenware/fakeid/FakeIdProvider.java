@@ -215,7 +215,7 @@ public class FakeIdProvider {
         grant.setAccessToken(accessToken);
         grant.setClientId(request.getClientId());
         grant.setScope(scopes);
-        grant.setSub(configuration.getClaims().get("name").toString());
+        grant.setSub(configuration.getClaims().get("sub").toString());
         issuedTokens.put(accessToken, grant);
 
         LOG.info("Token issued using auth code grant for client {}", clientId);
