@@ -76,7 +76,9 @@ If you do not provide FAKEID_ISSUER it will default to http://localhost:8091
 If you do not provide FAKEID_SIGNING_KEY one will be generated for you on startup. Note that this will change every time you start Fake ID, and if any relying parties are cacheing JWKS
 you may hit signature verification errors.
 
-If you do not provide FAKEID_SAMPLE_CLAIMS your id tokens will have the usual necessary claims such as iss and aud, as well as a subject and name of "John C. Developer" and an email claim of "john@developer.com"
+If you do not provide FAKEID_SAMPLE_CLAIMS your id tokens will have the usual necessary claims such as iss and aud, as well as a subject of "John C. Developer" and an email claim of "john@developer.com"
+
+If you provide claims, there **must** be a *sub* included
 
 ## Generating these options
 
