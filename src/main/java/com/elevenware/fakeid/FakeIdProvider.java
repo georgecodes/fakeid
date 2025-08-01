@@ -247,7 +247,7 @@ public class FakeIdProvider {
         grant.setAccessToken(accessToken);
         grant.setClientId(clientId);
         grant.setScope(scopes);
-        grant.setSub(configuration.getClaims().get("name").toString());
+        grant.setSub(configuration.getClaims().get("sub").toString());
         issuedTokens.put(accessToken, grant);
 
         LOG.info("Token issued using client credentials grant for client {}", clientId);
