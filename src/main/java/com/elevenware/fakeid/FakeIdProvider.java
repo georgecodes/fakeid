@@ -36,8 +36,8 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalUnit;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class FakeIdProvider {
 
@@ -46,8 +46,8 @@ public class FakeIdProvider {
     private final String baseUrl;
     private final DiscoveryDocument discoveryDocument;
     private final Configuration configuration;
-    private Map<String, AuthRequest> requests = new HashMap<>();
-    private Map<String, Grant> issuedTokens = new HashMap<>();
+    private Map<String, AuthRequest> requests = new ConcurrentHashMap<>();
+    private Map<String, Grant> issuedTokens = new ConcurrentHashMap<>();
 
     public FakeIdProvider(Configuration configuration) {
         this.baseUrl = configuration.getIssuer();
@@ -60,9 +60,7 @@ public class FakeIdProvider {
     }
 
     public void userInfoEndpoint(@NotNull Context context) {
-        Map<String, Object> claims = configuration.getClaims();
-        String name = (String) claims.get("name");
-        context.json(claims);
+        context.json(configuration.getClaims());
     }
 
     public void tokenEndpoint(@NotNull Context context) {
@@ -76,6 +74,11 @@ public class FakeIdProvider {
         LOG.info("Token endpoint request parameters: {}", params);
         LOG.info("Grant type: {}", grantTypeName);
 
+        if(grantTypeName == null) {
+            context.status(400).json(Map.of("error", "invalid_request", "error_description", "missing required parameter: grant_type"));
+            return;
+        }
+
         switch (grantTypeName) {
             case "authorization_code":
                 context.json(authCodeGrant(authCode, scope));
@@ -84,18 +87,28 @@ public class FakeIdProvider {
                 Map<String, Object> response = clientCredentialsGrant(clientId, scope);
                 context.json(response);
                 break;
+            default:
+                context.status(400).json(Map.of("error", "unsupported_grant_type", "error_description", "unsupported grant type: " + grantTypeName));
         }
 
     }
 
     public void authorizationEndpoint(@NotNull Context context) {
         Map<String, List<String>> params = context.queryParamMap();
+        for(String required : List.of("client_id", "redirect_uri", "response_type", "scope")) {
+            if(!hasValidValue(params.get(required))) {
+                context.status(400).json(Map.of("error", "invalid_request", "error_description", "missing required parameter: " + required));
+                return;
+            }
+        }
         AuthRequest authRequest = new AuthRequest();
         authRequest.setClientId(params.get("client_id").get(0));
         authRequest.setScopes(Set.copyOf(params.get("scope")));
         authRequest.setRedirectUri(params.get("redirect_uri").get(0));
         authRequest.setResponseType(params.get("response_type").get(0));
-        authRequest.setState(params.get("state").get(0));
+        if(hasValidValue(params.get("state"))) {
+            authRequest.setState(params.get("state").get(0));
+        }
         if(params.containsKey("nonce")) {
             authRequest.setNonce(params.get("nonce").get(0));
         }
@@ -204,7 +217,7 @@ public class FakeIdProvider {
         if(scopes == null) {
             scopes = Collections.emptySet();
         }
-        if(scope == null || scopes.isEmpty()) {
+        if(scope == null) {
             scope = String.join(" ", scopes);
         }
         if(scope.contains("openid")) {
@@ -260,6 +273,10 @@ public class FakeIdProvider {
         res.put("client_id", clientId);
         res.put("grant_type", "client_credentials");
         return res;
+    }
+
+    private boolean hasValidValue(List<String> values) {
+        return values != null && !values.isEmpty() && values.get(0) != null && !values.get(0).isEmpty();
     }
 
 }

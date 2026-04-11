@@ -21,7 +21,7 @@ package com.elevenware.fakeid;
  */
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import io.javalin.Javalin;
 import io.javalin.json.JavalinJackson;
 import org.slf4j.Logger;
@@ -44,7 +44,7 @@ public class FakeIdApplication {
 
         jsonMapper.getMapper()
                 .setSerializationInclusion(JsonInclude.Include.NON_NULL)
-                .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
+                .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
         var provider = new FakeIdProvider(configuration);
 
         server = Javalin.create(c -> {
