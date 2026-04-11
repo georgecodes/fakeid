@@ -15,7 +15,7 @@ version: '3.8'
 
 services:
   fakeid:
-    image: georgemc/fakeid:v0.0.1
+    image: georgemc/fakeid:v0.0.2-dev
     ports:
       - "8091:8091"
 ```
@@ -37,7 +37,7 @@ services:
     environment:
       ISSUER_URI: http://auth.localtest.me:8091
   fakeid:
-    image: georgemc/fakeid:v0.0.1
+    image: georgemc/fakeid:v0.0.2-dev
     ports:
       - "8091:8091"
     hostname: auth.localtest.me
