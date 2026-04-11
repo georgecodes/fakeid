@@ -37,12 +37,12 @@ public class DiscoveryDocument {
     private boolean requestParameterSupported;
     private Set<String> grantTypesSupported;
     private Set<String> scopesSupported;
-    private Set<String> tokenEndointAuthMethodsSupported;
+    private Set<String> tokenEndpointAuthMethodsSupported;
     private Set<String> acrValuesSupported;
     private Set<String> responseTypesSupported;
     private Set<String> subjectTypesSupported = Set.of("public");
     private Set<String> idTokenSigningAlgsSupported = Set.of("RS256", "PS256");
-    private Set<String> claimsSuported = Set.of("name", "email", "given_name", "family_name", "sub");
+    private Set<String> claimsSupported = Set.of("name", "email", "given_name", "family_name", "sub");
 
     @JsonIgnore
     public String getBase() {
@@ -113,12 +113,12 @@ public class DiscoveryDocument {
         this.scopesSupported = scopesSupported;
     }
 
-    public Set<String> getTokenEndointAuthMethodsSupported() {
-        return tokenEndointAuthMethodsSupported;
+    public Set<String> getTokenEndpointAuthMethodsSupported() {
+        return tokenEndpointAuthMethodsSupported;
     }
 
-    public void setTokenEndointAuthMethodsSupported(Set<String> tokenEndointAuthMethodsSupported) {
-        this.tokenEndointAuthMethodsSupported = tokenEndointAuthMethodsSupported;
+    public void setTokenEndpointAuthMethodsSupported(Set<String> tokenEndpointAuthMethodsSupported) {
+        this.tokenEndpointAuthMethodsSupported = tokenEndpointAuthMethodsSupported;
     }
 
     public Set<String> getAcrValuesSupported() {
@@ -153,12 +153,12 @@ public class DiscoveryDocument {
         this.idTokenSigningAlgsSupported = idTokenSigningAlgsSupported;
     }
 
-    public Set<String> getClaimsSuported() {
-        return claimsSuported;
+    public Set<String> getClaimsSupported() {
+        return claimsSupported;
     }
 
-    public void setClaimsSuported(Set<String> claimsSuported) {
-        this.claimsSuported = claimsSuported;
+    public void setClaimsSupported(Set<String> claimsSupported) {
+        this.claimsSupported = claimsSupported;
     }
 
     public static DiscoveryDocument create(String base) {
@@ -167,9 +167,9 @@ public class DiscoveryDocument {
         doc.setRequestParameterSupported(true);
         doc.setGrantTypesSupported(Set.of("authorization_code", "client_credentials", "refresh_token"));
         doc.setScopesSupported(Set.of("openid", "profile", "email"));
-        doc.setTokenEndointAuthMethodsSupported(Set.of("client_secret_basic", "client_secret_post"));
+        doc.setTokenEndpointAuthMethodsSupported(Set.of("client_secret_basic", "client_secret_post"));
         doc.setAcrValuesSupported(Set.of("urn:mace:incommon:iap:silver"));
-        doc.setResponseTypesSupported(Set.of("code", "token"));
+        doc.setResponseTypesSupported(Set.of("code", "token", "id_token"));
         return doc;
     }
 
