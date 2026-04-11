@@ -95,6 +95,22 @@ body {
   color: var(--accent);
 }
 
+.sidebar .github-link {
+  display: block;
+  margin-top: 1.5rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-radius: 6px;
+}
+
+.sidebar .github-link:hover {
+  color: var(--text);
+  background: var(--bg);
+  text-decoration: none;
+}
+
 /* Main content */
 .main {
   margin-left: 260px;
