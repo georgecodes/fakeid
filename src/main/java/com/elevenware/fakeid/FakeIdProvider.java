@@ -95,8 +95,9 @@ public class FakeIdProvider {
 
     public void authorizationEndpoint(@NotNull Context context) {
         Map<String, List<String>> params = context.queryParamMap();
-        for(String required : List.of("client_id", "redirect_uri", "response_type", "scope", "state")) {
-            if(!params.containsKey(required)) {
+        for(String required : List.of("client_id", "redirect_uri", "response_type", "scope")) {
+            List<String> values = params.get(required);
+            if(values == null || values.isEmpty() || values.get(0) == null || values.get(0).isEmpty()) {
                 context.status(400).json(Map.of("error", "invalid_request", "error_description", "missing required parameter: " + required));
                 return;
             }
@@ -106,7 +107,10 @@ public class FakeIdProvider {
         authRequest.setScopes(Set.copyOf(params.get("scope")));
         authRequest.setRedirectUri(params.get("redirect_uri").get(0));
         authRequest.setResponseType(params.get("response_type").get(0));
-        authRequest.setState(params.get("state").get(0));
+        List<String> stateValues = params.get("state");
+        if(stateValues != null && !stateValues.isEmpty() && stateValues.get(0) != null && !stateValues.get(0).isEmpty()) {
+            authRequest.setState(stateValues.get(0));
+        }
         if(params.containsKey("nonce")) {
             authRequest.setNonce(params.get("nonce").get(0));
         }
