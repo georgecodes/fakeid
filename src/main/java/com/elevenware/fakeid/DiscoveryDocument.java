@@ -169,7 +169,14 @@ public class DiscoveryDocument {
         doc.setScopesSupported(Set.of("openid", "profile", "email"));
         doc.setTokenEndpointAuthMethodsSupported(Set.of("client_secret_basic", "client_secret_post"));
         doc.setAcrValuesSupported(Set.of("urn:mace:incommon:iap:silver"));
-        doc.setResponseTypesSupported(Set.of("code", "token", "id_token"));
+        doc.setResponseTypesSupported(Set.of(
+                "code",
+                "token",
+                "id_token",
+                "code token",
+                "code id_token",
+                "token id_token",
+                "code token id_token"));
         return doc;
     }
 
