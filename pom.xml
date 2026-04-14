@@ -14,7 +14,7 @@
         <license.inceptionYear>2025</license.inceptionYear>
     </properties>
     <name>FakeID</name>
-    <description>A hands-free OIDC server with zero interaction</description>
+    <description>A hands-free OIDC server with zero interactions</description>
     <url>https://georgecodes.github.com/fakeid</url>
     <licenses>
         <license>
