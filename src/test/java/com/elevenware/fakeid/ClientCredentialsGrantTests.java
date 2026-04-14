@@ -30,6 +30,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Map;
 
 import static com.elevenware.fakeid.util.TestUtils.getFormDataAsString;
@@ -53,6 +55,7 @@ public class ClientCredentialsGrantTests {
         Map<String, String> tokenRequest = Map.of(
                 "grant_type", "client_credentials",
                 "client_id", "client1",
+                "client_secret", "secret1",
                 "scope", "api:read"
         );
 
@@ -66,6 +69,73 @@ public class ClientCredentialsGrantTests {
         Map<String, Object> tokenResponse = TestUtils.mapper().readValue(response.body(), Map.class);
         assertFalse(tokenResponse.containsKey("id_token"));
         assertTrue(tokenResponse.get("scope").toString().contains("api:read"));
+        assertEquals("Bearer", tokenResponse.get("token_type"));
+        assertTrue(tokenResponse.get("access_token").toString().length() > 0);
+    }
+
+    @Test
+    void clientCredentialsGrantWithBasicAuth() throws IOException, InterruptedException {
+
+        HttpClient client = HttpClient.newHttpClient();
+
+        Map<String, String> tokenRequest = Map.of(
+                "grant_type", "client_credentials",
+                "scope", "api:read"
+        );
+
+        String basic = Base64.getEncoder().encodeToString("client1:secret1".getBytes(StandardCharsets.ISO_8859_1));
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(String.format("http://localhost:%d/token", port)))
+                .header("Authorization", "Basic " + basic)
+                .POST(HttpRequest.BodyPublishers.ofString(getFormDataAsString(tokenRequest)))
+                .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode());
+        Map<String, Object> tokenResponse = TestUtils.mapper().readValue(response.body(), Map.class);
+        assertEquals("Bearer", tokenResponse.get("token_type"));
+    }
+
+    @Test
+    void clientCredentialsGrantRejectedWhenCredentialsMissing() throws IOException, InterruptedException {
+
+        HttpClient client = HttpClient.newHttpClient();
+
+        Map<String, String> tokenRequest = Map.of(
+                "grant_type", "client_credentials",
+                "scope", "api:read"
+        );
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(String.format("http://localhost:%d/token", port)))
+                .POST(HttpRequest.BodyPublishers.ofString(getFormDataAsString(tokenRequest)))
+                .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(401, response.statusCode());
+        Map<String, Object> body = TestUtils.mapper().readValue(response.body(), Map.class);
+        assertEquals("invalid_client", body.get("error"));
+    }
+
+    @Test
+    void clientCredentialsGrantRejectedWhenClientSecretMissing() throws IOException, InterruptedException {
+
+        HttpClient client = HttpClient.newHttpClient();
+
+        Map<String, String> tokenRequest = Map.of(
+                "grant_type", "client_credentials",
+                "client_id", "client1",
+                "scope", "api:read"
+        );
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(String.format("http://localhost:%d/token", port)))
+                .POST(HttpRequest.BodyPublishers.ofString(getFormDataAsString(tokenRequest)))
+                .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(401, response.statusCode());
     }
 
 
