@@ -69,7 +69,6 @@ public class FakeIdProvider {
         String grantTypeName = context.formParam("grant_type");
         String scope = context.formParam("scope");
         String authCode = context.formParam("code");
-        String clientId = context.formParam("client_id");
 
         LOG.info("Token endpoint request parameters: {}", params);
         LOG.info("Grant type: {}", grantTypeName);
@@ -79,18 +78,55 @@ public class FakeIdProvider {
             return;
         }
 
+        ClientCredentials credentials = extractClientCredentials(context);
+
         switch (grantTypeName) {
             case "authorization_code":
                 context.json(authCodeGrant(authCode, scope));
                 break;
             case "client_credentials":
-                Map<String, Object> response = clientCredentialsGrant(clientId, scope);
+                if(credentials == null) {
+                    context.status(401).json(Map.of("error", "invalid_client", "error_description", "client credentials are required"));
+                    return;
+                }
+                Map<String, Object> response = clientCredentialsGrant(credentials.clientId, scope);
                 context.json(response);
                 break;
             default:
                 context.status(400).json(Map.of("error", "unsupported_grant_type", "error_description", "unsupported grant type: " + grantTypeName));
         }
 
+    }
+
+    private ClientCredentials extractClientCredentials(Context context) {
+        String authHeader = context.header("Authorization");
+        if(authHeader != null && authHeader.startsWith("Basic ")) {
+            try {
+                String decoded = new String(Base64.getDecoder().decode(authHeader.substring(6)));
+                int colonIdx = decoded.indexOf(':');
+                if(colonIdx > 0 && colonIdx < decoded.length() - 1) {
+                    return new ClientCredentials(decoded.substring(0, colonIdx), decoded.substring(colonIdx + 1));
+                }
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+            return null;
+        }
+        String clientId = context.formParam("client_id");
+        String clientSecret = context.formParam("client_secret");
+        if(clientId != null && !clientId.isEmpty() && clientSecret != null && !clientSecret.isEmpty()) {
+            return new ClientCredentials(clientId, clientSecret);
+        }
+        return null;
+    }
+
+    private static final class ClientCredentials {
+        final String clientId;
+        final String clientSecret;
+        ClientCredentials(String clientId, String clientSecret) {
+            this.clientId = clientId;
+            this.clientSecret = clientSecret;
+        }
     }
 
     public void authorizationEndpoint(@NotNull Context context) {
