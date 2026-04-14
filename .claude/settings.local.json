@@ -1,8 +1,1 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(./mvnw -q test -Dtest=ClientCredentialsGrantTests)",
-      "Bash(./mvnw test:*)"
-    ]
-  }
-}
+{}
