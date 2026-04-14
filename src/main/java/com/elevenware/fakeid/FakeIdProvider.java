@@ -34,6 +34,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -100,9 +101,10 @@ public class FakeIdProvider {
 
     private ClientCredentials extractClientCredentials(Context context) {
         String authHeader = context.header("Authorization");
-        if(authHeader != null && authHeader.startsWith("Basic ")) {
+        if(authHeader != null && authHeader.regionMatches(true, 0, "Basic ", 0, 6)) {
             try {
-                String decoded = new String(Base64.getDecoder().decode(authHeader.substring(6)));
+                String encoded = authHeader.substring(6).trim();
+                String decoded = new String(Base64.getDecoder().decode(encoded), StandardCharsets.ISO_8859_1);
                 int colonIdx = decoded.indexOf(':');
                 if(colonIdx > 0 && colonIdx < decoded.length() - 1) {
                     return new ClientCredentials(decoded.substring(0, colonIdx), decoded.substring(colonIdx + 1));

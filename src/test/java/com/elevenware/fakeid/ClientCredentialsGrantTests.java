@@ -30,6 +30,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Map;
 
@@ -82,7 +83,7 @@ public class ClientCredentialsGrantTests {
                 "scope", "api:read"
         );
 
-        String basic = Base64.getEncoder().encodeToString("client1:secret1".getBytes());
+        String basic = Base64.getEncoder().encodeToString("client1:secret1".getBytes(StandardCharsets.ISO_8859_1));
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(String.format("http://localhost:%d/token", port)))
