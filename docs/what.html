@@ -47,13 +47,26 @@
         <dd>Where the initial authorisation request goes. Automatically redirects back to the relying party with state, an auth code, and any requested tokens.</dd>
 
         <dt>/token</dt>
-        <dd>Where the relying party can exchange an auth code for access and id tokens.</dd>
+        <dd>Where the relying party can exchange an auth code for access and id tokens. Also supports the <code>client_credentials</code> grant for machine-to-machine flows, returning an access token without an id token.</dd>
 
         <dt>/jwks</dt>
         <dd>Where the public key used to sign the id tokens is available, so relying parties can verify id tokens.</dd>
 
         <dt>/userinfo</dt>
         <dd>Returns the configured claims in JSON format.</dd>
+      </dl>
+
+      <h2>Supported Grant Types</h2>
+      <dl class="endpoint">
+        <dt>authorization_code</dt>
+        <dd>The standard OIDC flow. Exchange an auth code obtained from <code>/authorize</code> for an access token and (when <code>openid</code> scope is requested) an id token.</dd>
+
+        <dt>client_credentials</dt>
+        <dd>
+          Machine-to-machine flow. POST to <code>/token</code> with <code>grant_type=client_credentials</code> and client credentials. Credentials may be sent either as
+          <code>client_id</code> and <code>client_secret</code> form parameters, or via an HTTP Basic <code>Authorization</code> header. As with everything else in Fake ID,
+          the credentials are not validated &mdash; they merely need to be present. The response contains an access token but no id token.
+        </dd>
       </dl>
 
       <h2>What Fake ID Does NOT Do</h2>
