@@ -60,7 +60,6 @@ public class FakeIdProvider {
     private final Configuration configuration;
     private final Provider provider;
     private final Map<String, String> noncesByCode = new ConcurrentHashMap<>();
-    private Map<String, Grant> issuedTokens = new ConcurrentHashMap<>();
 
     public FakeIdProvider(Configuration configuration) {
         this.baseUrl = configuration.getIssuer();
@@ -241,22 +240,7 @@ public class FakeIdProvider {
         }
         if(responseType.contains("token")) {
             String accessToken = RandomStringUtils.randomAlphanumeric(32);
-            Grant grant = new Grant();
-            grant.setAccessToken(accessToken);
-            grant.setClientId(clientId);
-            grant.setSub(subject);
-            grant.setScope(authRequest.getScopes());
-            issuedTokens.put(accessToken, grant);
-            Instant now = Instant.now();
-            provider.getIssuedGrantStore().save(new com.oidc4j.v2.lib.store.IssuedGrant(
-                    UUID.randomUUID().toString(),
-                    clientId,
-                    "implicit",
-                    authRequest.getScopes(),
-                    accessToken,
-                    null,
-                    now,
-                    now.plus(1L, ChronoUnit.HOURS)));
+            saveIssuedGrant(clientId, "implicit", authRequest.getScopes(), accessToken);
             responseBuilder.append(separator)
                     .append("token=").append(accessToken);
             separator = '&';
@@ -329,24 +313,20 @@ public class FakeIdProvider {
     public void introspectionEndpoint(@NotNull Context context) {
         Map<String, List<String>> body = context.formParamMap();
         String token = body.get("token").get(0);
-        Grant grant = issuedTokens.get(token);
-        if(grant != null) {
-            // In a real implementation, you would check the token validity and other claims
+        Optional<com.oidc4j.v2.lib.store.IssuedGrant> found = provider.getIssuedGrantStore().findByAccessToken(token);
+        if (found.isPresent()) {
+            com.oidc4j.v2.lib.store.IssuedGrant grant = found.get();
             context.json(Map.of(
                     "active", true,
                     "client_id", grant.getClientId(),
-                    "sub", grant.getSub(),
-                    "scope", String.join(" ", grant.getScopes()),
-                    "exp", System.currentTimeMillis() / 1000L + 3600,
-                    "iat", System.currentTimeMillis() / 1000L
+                    "sub", configuration.getClaims().get("sub").toString(),
+                    "scope", String.join(" ", grant.getGrantedScopes()),
+                    "exp", grant.getExpiresAt().getEpochSecond(),
+                    "iat", grant.getIssuedAt().getEpochSecond()
             ));
         } else {
             context.json(Map.of("active", false));
         }
-    }
-
-    public Map<String, Grant> getIssuedTokens() {
-        return issuedTokens;
     }
 
     private Map<String, Object> authCodeGrant(String authCode, String scope) {
@@ -368,22 +348,7 @@ public class FakeIdProvider {
             noncesByCode.remove(authCode);
         }
         String accessToken = RandomStringUtils.randomAlphanumeric(32);
-        Grant grant = new Grant();
-        grant.setAccessToken(accessToken);
-        grant.setClientId(clientId);
-        grant.setScope(scopes);
-        grant.setSub(pending.getSubject());
-        issuedTokens.put(accessToken, grant);
-        Instant now = Instant.now();
-        provider.getIssuedGrantStore().save(new com.oidc4j.v2.lib.store.IssuedGrant(
-                UUID.randomUUID().toString(),
-                clientId,
-                "authorization_code",
-                scopes,
-                accessToken,
-                null,
-                now,
-                now.plus(1L, ChronoUnit.HOURS)));
+        saveIssuedGrant(clientId, "authorization_code", scopes, accessToken);
 
         LOG.info("Token issued using auth code grant for client {}", clientId);
         Map<String,Object> res = new HashMap<>();
@@ -410,12 +375,7 @@ public class FakeIdProvider {
         } else {
             scope = "";
         }
-        Grant grant = new Grant();
-        grant.setAccessToken(accessToken);
-        grant.setClientId(clientId);
-        grant.setScope(scopes);
-        grant.setSub(configuration.getClaims().get("sub").toString());
-        issuedTokens.put(accessToken, grant);
+        saveIssuedGrant(clientId, "client_credentials", scopes, accessToken);
 
         LOG.info("Token issued using client credentials grant for client {}", clientId);
         Map<String,Object> res = new HashMap<>();
@@ -427,6 +387,19 @@ public class FakeIdProvider {
         res.put("client_id", clientId);
         res.put("grant_type", "client_credentials");
         return res;
+    }
+
+    private void saveIssuedGrant(String clientId, String grantType, Set<String> scopes, String accessToken) {
+        Instant now = Instant.now();
+        provider.getIssuedGrantStore().save(new com.oidc4j.v2.lib.store.IssuedGrant(
+                UUID.randomUUID().toString(),
+                clientId,
+                grantType,
+                scopes,
+                accessToken,
+                null,
+                now,
+                now.plus(1L, ChronoUnit.HOURS)));
     }
 
     private boolean hasValidValue(List<String> values) {
