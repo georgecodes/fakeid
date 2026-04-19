@@ -24,8 +24,6 @@ import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.RSASSASigner;
-import com.nimbusds.jose.jwk.JWK;
-import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
@@ -44,7 +42,6 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -141,56 +138,27 @@ public class FakeIdProvider {
             return;
         }
 
-        ClientCredentials credentials = extractClientCredentials(context);
+        Optional<com.oidc4j.v2.lib.ClientCredentials> credentials = com.oidc4j.v2.lib.ClientAuthenticationParser.parse(
+                context.header("Authorization"),
+                context.formParam("client_id"),
+                context.formParam("client_secret"));
 
         switch (grantTypeName) {
             case "authorization_code":
                 context.json(authCodeGrant(authCode, scope));
                 break;
             case "client_credentials":
-                if(credentials == null) {
+                if(credentials.isEmpty() || com.oidc4j.v2.lib.ClientCredentials.NONE.equals(credentials.get().getMethod())) {
                     context.status(401).json(Map.of("error", "invalid_client", "error_description", "client credentials are required"));
                     return;
                 }
-                Map<String, Object> response = clientCredentialsGrant(credentials.clientId, scope);
+                Map<String, Object> response = clientCredentialsGrant(credentials.get().getClientId(), scope);
                 context.json(response);
                 break;
             default:
                 context.status(400).json(Map.of("error", "unsupported_grant_type", "error_description", "unsupported grant type: " + grantTypeName));
         }
 
-    }
-
-    private ClientCredentials extractClientCredentials(Context context) {
-        String authHeader = context.header("Authorization");
-        if(authHeader != null && authHeader.regionMatches(true, 0, "Basic ", 0, 6)) {
-            try {
-                String encoded = authHeader.substring(6).trim();
-                String decoded = new String(Base64.getDecoder().decode(encoded), StandardCharsets.ISO_8859_1);
-                int colonIdx = decoded.indexOf(':');
-                if(colonIdx > 0 && colonIdx < decoded.length() - 1) {
-                    return new ClientCredentials(decoded.substring(0, colonIdx), decoded.substring(colonIdx + 1));
-                }
-            } catch (IllegalArgumentException e) {
-                return null;
-            }
-            return null;
-        }
-        String clientId = context.formParam("client_id");
-        String clientSecret = context.formParam("client_secret");
-        if(clientId != null && !clientId.isEmpty() && clientSecret != null && !clientSecret.isEmpty()) {
-            return new ClientCredentials(clientId, clientSecret);
-        }
-        return null;
-    }
-
-    private static final class ClientCredentials {
-        final String clientId;
-        final String clientSecret;
-        ClientCredentials(String clientId, String clientSecret) {
-            this.clientId = clientId;
-            this.clientSecret = clientSecret;
-        }
     }
 
     public void authorizationEndpoint(@NotNull Context context) {
