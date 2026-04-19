@@ -170,7 +170,10 @@ public class FakeIdProvider {
                 .clientId(params.get("client_id").get(0))
                 .responseType(params.get("response_type").get(0))
                 .redirectUri(params.get("redirect_uri").get(0))
-                .scopes(Set.of(params.get("scope").get(0).split(" ")));
+                .scopes(Arrays.stream(params.get("scope").get(0).split(" "))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new)));
         if (hasValidValue(params.get("state"))) {
             builder.state(params.get("state").get(0));
         }
