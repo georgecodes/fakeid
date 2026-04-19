@@ -243,7 +243,7 @@ public class FakeIdProvider {
         }
         provider.fireTokenRequest(ctx);
         if (ctx.hasErrors()) {
-            throw new IllegalStateException("Token request failed: " + ctx.getErrors());
+            return tokenErrorResponse(ctx.getErrors());
         }
         String clientId = ctx.getAuthenticatedClient() != null
                 ? ctx.getAuthenticatedClient().getId()
@@ -299,6 +299,34 @@ public class FakeIdProvider {
                 null,
                 now,
                 now.plus(1L, ChronoUnit.HOURS)));
+    }
+
+    private Map<String, Object> tokenErrorResponse(Object errors) {
+        String errorDescription = errorDescription(errors);
+        String error = oauthErrorCode(errorDescription);
+
+        LOG.warn("Token request failed with OAuth error {}: {}", error, errorDescription);
+
+        Map<String, Object> res = new HashMap<>();
+        res.put("error", error);
+        res.put("error_description", errorDescription);
+        return res;
+    }
+
+    private String oauthErrorCode(String errorDescription) {
+        String normalized = errorDescription == null ? "" : errorDescription.toLowerCase(Locale.ROOT);
+        if (normalized.contains("invalid_client")) {
+            return "invalid_client";
+        }
+        if (normalized.contains("invalid_grant")) {
+            return "invalid_grant";
+        }
+        return "invalid_request";
+    }
+
+    private String errorDescription(Object errors) {
+        String description = String.valueOf(errors);
+        return description == null || description.isBlank() ? "Token request failed" : description;
     }
 
     private boolean hasValidValue(List<String> values) {
