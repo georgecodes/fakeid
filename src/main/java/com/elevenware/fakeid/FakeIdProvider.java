@@ -20,13 +20,8 @@ package com.elevenware.fakeid;
  * #L%
  */
 
-import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.jwk.RSAKey;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 import com.oidc4j.v2.lib.Provider;
 import com.oidc4j.v2.lib.ProviderConfiguration;
 import com.oidc4j.v2.lib.SigningKeySource;
@@ -73,7 +68,10 @@ public class FakeIdProvider {
                 .build();
 
         RSAKey signingKey = (RSAKey) configuration.getJwks().getKeyByKeyId("signingKey");
-        SigningKeySource keySource = new SigningKeySource(signingKey, configuration.getSigningAlgorithm());
+        JWSAlgorithm keyAlg = signingKey.getAlgorithm() != null
+                ? JWSAlgorithm.parse(signingKey.getAlgorithm().getName())
+                : configuration.getSigningAlgorithm();
+        SigningKeySource keySource = new SigningKeySource(signingKey, keyAlg);
 
         UserStore userStore = new InMemoryUserStore();
         Object subject = configuration.getClaims().get("sub");
@@ -144,7 +142,7 @@ public class FakeIdProvider {
 
         switch (grantTypeName) {
             case "authorization_code":
-                context.json(authCodeGrant(authCode, scope));
+                context.json(authCodeGrant(authCode, scope, credentials.map(com.oidc4j.v2.lib.ClientCredentials::getClientId).orElse(null)));
                 break;
             case "client_credentials":
                 if(credentials.isEmpty() || com.oidc4j.v2.lib.ClientCredentials.NONE.equals(credentials.get().getMethod())) {
@@ -206,32 +204,6 @@ public class FakeIdProvider {
         provider.getPendingGrantStore().save(pending);
     }
 
-    private String idToken(String nonce, String clientId) {
-        JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder();
-        claimsBuilder.subject(configuration.getClaims().get("sub").toString());
-        for(Map.Entry<String, Object> claim: configuration.getClaims().entrySet()) {
-            claimsBuilder.claim(claim.getKey(), claim.getValue());
-        }
-        claimsBuilder.claim("nonce", nonce);
-        claimsBuilder.claim("iss", configuration.getIssuer());
-        claimsBuilder.audience(clientId);
-        Instant now = Instant.now();
-        claimsBuilder.issueTime(Date.from(now));
-        now = now.plus(1L, ChronoUnit.HOURS);
-        claimsBuilder.expirationTime(Date.from(now));
-        RSAKey signingKey = provider.getKeySource().getSigningKey();
-        JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.parse(signingKey.getAlgorithm().getName()))
-                .keyID(signingKey.getKeyID())
-                .build();
-        SignedJWT idToken = new SignedJWT(header, claimsBuilder.build());
-        try {
-            idToken.sign(new RSASSASigner(signingKey.toRSAPrivateKey()));
-            return idToken.serialize();
-        } catch (JOSEException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     public void jwksEndpoint(@NotNull Context context) {
         context.json(provider.getKeySource().getPublicJwks().toJSONObject());
     }
@@ -255,36 +227,39 @@ public class FakeIdProvider {
         }
     }
 
-    private Map<String, Object> authCodeGrant(String authCode, String scope) {
-        com.oidc4j.v2.lib.store.PendingGrant pending = provider.getPendingGrantStore()
-                .consume(authCode)
-                .orElseThrow(() -> new IllegalStateException("Unknown authorization code: " + authCode));
-        String clientId = pending.getClientId();
-        String idToken = null;
-        Set<String> scopes = pending.getConsentedScopes();
-        if(scopes == null) {
-            scopes = Collections.emptySet();
+    private Map<String, Object> authCodeGrant(String authCode, String scope, String authClientId) {
+        com.oidc4j.v2.lib.OidcContext ctx = new com.oidc4j.v2.lib.OidcContext();
+        ctx.setGrantType("authorization_code");
+        ctx.setCode(authCode);
+        if (authClientId == null) {
+            authClientId = provider.getPendingGrantStore().findByCode(authCode)
+                    .map(com.oidc4j.v2.lib.store.PendingGrant::getClientId)
+                    .orElse(null);
         }
-        if(scope == null) {
-            scope = String.join(" ", scopes);
+        ctx.setClientId(authClientId);
+        ctx.setClientSecret("");
+        if (scope != null && !scope.isEmpty()) {
+            ctx.setRequestedScopes(Set.of(scope.split(" ")));
         }
-        if(scope.contains("openid")) {
-            idToken = idToken(pending.getNonce(), clientId);
+        provider.fireTokenRequest(ctx);
+        if (ctx.hasErrors()) {
+            throw new IllegalStateException("Token request failed: " + ctx.getErrors());
         }
-        String accessToken = RandomStringUtils.randomAlphanumeric(32);
-        saveIssuedGrant(clientId, "authorization_code", scopes, accessToken);
-
+        String clientId = ctx.getAuthenticatedClient() != null
+                ? ctx.getAuthenticatedClient().getId()
+                : authClientId;
+        Set<String> grantedScopes = ctx.getGrantedScopes() == null ? Set.of() : ctx.getGrantedScopes();
         LOG.info("Token issued using auth code grant for client {}", clientId);
         Map<String,Object> res = new HashMap<>();
-        res.put("access_token", accessToken);
+        res.put("access_token", ctx.getAccessToken());
         res.put("token_type", "Bearer");
         res.put("expires_in", 3600);
-        res.put("scope", scope);
+        res.put("scope", String.join(" ", grantedScopes));
         res.put("issued_at", System.currentTimeMillis() / 1000L);
         res.put("client_id", clientId);
         res.put("grant_type", "authorization_code");
-        if(idToken != null) {
-            res.put("id_token", idToken);
+        if(ctx.getIdToken() != null) {
+            res.put("id_token", ctx.getIdToken());
         }
         return res;
     }
