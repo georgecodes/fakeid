@@ -20,6 +20,7 @@ package com.elevenware.fakeid;
  * #L%
  */
 
+import com.oidc4j.v2.lib.model.DiscoveryDocument;
 import io.javalin.http.Context;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;

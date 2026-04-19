@@ -26,8 +26,19 @@ import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import com.oidc4j.v2.lib.Provider;
+import com.oidc4j.v2.lib.ProviderConfiguration;
+import com.oidc4j.v2.lib.SigningKeySource;
+import com.oidc4j.v2.lib.store.Client;
+import com.oidc4j.v2.lib.store.ClientStore;
+import com.oidc4j.v2.lib.store.InMemoryIssuedGrantStore;
+import com.oidc4j.v2.lib.store.InMemoryPendingGrantStore;
+import com.oidc4j.v2.lib.store.InMemoryUserStore;
+import com.oidc4j.v2.lib.store.User;
+import com.oidc4j.v2.lib.store.UserStore;
 import io.javalin.http.Context;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.jetbrains.annotations.NotNull;
@@ -44,20 +55,78 @@ public class FakeIdProvider {
 
     private static final Logger LOG = LoggerFactory.getLogger(FakeIdProvider.class);
 
-    private final String baseUrl;
-    private final DiscoveryDocument discoveryDocument;
     private final Configuration configuration;
-    private Map<String, AuthRequest> requests = new ConcurrentHashMap<>();
-    private Map<String, Grant> issuedTokens = new ConcurrentHashMap<>();
+    private final Provider provider;
+    private final Map<String, String> noncesByCode = new ConcurrentHashMap<>();
 
     public FakeIdProvider(Configuration configuration) {
-        this.baseUrl = configuration.getIssuer();
         this.configuration = configuration;
-        this.discoveryDocument = DiscoveryDocument.create(baseUrl);
+        this.provider = buildV2Provider(configuration);
+    }
+
+    private static Provider buildV2Provider(Configuration configuration) {
+        ProviderConfiguration providerConfig = ProviderConfiguration.builder()
+                .issuer(configuration.getIssuer())
+                .grantType("authorization_code")
+                .grantType("client_credentials")
+                .grantType("refresh_token")
+                .clientAuthMethod("client_secret_basic")
+                .clientAuthMethod("client_secret_post")
+                .scope("openid")
+                .scope("profile")
+                .scope("email")
+                .build();
+
+        RSAKey signingKey = (RSAKey) configuration.getJwks().getKeyByKeyId("signingKey");
+        SigningKeySource keySource = new SigningKeySource(signingKey);
+
+        ClientStore clientStore = new AutoAcceptClientStore();
+        UserStore userStore = new InMemoryUserStore();
+        Object subject = configuration.getClaims().get("sub");
+        if (subject != null) {
+            userStore.save(userFromClaims(subject.toString(), configuration.getClaims()));
+        }
+
+        return new Provider(
+                providerConfig,
+                clientStore,
+                new InMemoryPendingGrantStore(),
+                new InMemoryIssuedGrantStore(),
+                userStore,
+                keySource);
+    }
+
+    private static User userFromClaims(String subject, Map<String, Object> claims) {
+        return new User(
+                subject,
+                str(claims.get("name")),
+                str(claims.get("preferred_username")),
+                str(claims.get("given_name")),
+                str(claims.get("family_name")),
+                str(claims.get("email")),
+                Boolean.TRUE.equals(claims.get("email_verified")));
+    }
+
+    private static String str(Object v) {
+        return v == null ? null : v.toString();
+    }
+
+    private static final class AutoAcceptClientStore implements ClientStore {
+        private final Map<String, Client> clients = new ConcurrentHashMap<>();
+
+        @Override
+        public Optional<Client> findById(String id) {
+            return Optional.of(clients.computeIfAbsent(id, cid -> new Client(cid, "")));
+        }
+
+        @Override
+        public void save(Client client) {
+            clients.put(client.getId(), client);
+        }
     }
 
     public void getDiscoveryDocument(@NotNull Context context) {
-        context.json(discoveryDocument);
+        context.json(provider.discoveryDocument());
     }
 
     public void userInfoEndpoint(@NotNull Context context) {
@@ -155,27 +224,26 @@ public class FakeIdProvider {
                 .append(authRequest.getRedirectUri());
         char separator = '?';
         String authCode = RandomStringUtils.randomAlphanumeric(16);
+        String clientId = params.get("client_id").get(0);
+        String subject = configuration.getClaims().get("sub").toString();
         String responseType = authRequest.getResponseType();
         if(responseType.contains("code")) {
-          responseBuilder.append(separator)
+            savePendingAuthCode(authCode, clientId, subject, authRequest.getScopes(),
+                    authRequest.getRedirectUri(), authRequest.getNonce());
+            responseBuilder.append(separator)
                   .append("code=").append(authCode);
             separator = '&';
         }
         if(responseType.contains("token")) {
             String accessToken = RandomStringUtils.randomAlphanumeric(32);
-            Grant grant = new Grant();
-            grant.setAccessToken(accessToken);
-            grant.setClientId(params.get("client_id").get(0));
-            grant.setSub(configuration.getClaims().get("sub").toString());
-            grant.setScope(authRequest.getScopes());
-            issuedTokens.put(accessToken, grant);
+            saveIssuedGrant(clientId, "implicit", authRequest.getScopes(), accessToken);
             responseBuilder.append(separator)
                     .append("token=").append(accessToken);
             separator = '&';
         }
         if (responseType.contains("id_token")) {
             responseBuilder.append(separator)
-                    .append("id_token=").append(idToken(authRequest.getNonce(), params.get("client_id").get(0)));
+                    .append("id_token=").append(idToken(authRequest.getNonce(), clientId));
             separator = '&';
         }
         if (authRequest.getState() != null) {
@@ -184,9 +252,28 @@ public class FakeIdProvider {
         }
 
         LOG.info("Authorization response: {}", responseBuilder.toString());
-        requests.put(authCode, authRequest);
         String redirect = responseBuilder.toString();
         context.redirect(redirect);
+    }
+
+    public void savePendingAuthCode(String code, String clientId, String subject,
+                                    Set<String> scopes, String redirectUri, String nonce) {
+        Instant now = Instant.now();
+        com.oidc4j.v2.lib.store.PendingGrant pending = new com.oidc4j.v2.lib.store.PendingGrant(
+                code,
+                clientId,
+                subject,
+                scopes == null ? Set.of() : scopes,
+                redirectUri,
+                null,
+                null,
+                now,
+                now.plus(10L, ChronoUnit.MINUTES));
+        pending.grant();
+        provider.getPendingGrantStore().save(pending);
+        if (nonce != null) {
+            noncesByCode.put(code, nonce);
+        }
     }
 
     private String idToken(String nonce, String clientId) {
@@ -202,14 +289,13 @@ public class FakeIdProvider {
         claimsBuilder.issueTime(Date.from(now));
         now = now.plus(1L, ChronoUnit.HOURS);
         claimsBuilder.expirationTime(Date.from(now));
-        JWK signingKey = configuration.getJwks().getKeyByKeyId("signingKey");
-        String alg = signingKey.getAlgorithm().getName();
-        JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.parse(alg))
-                .keyID(configuration.getJwks().getKeyByKeyId("signingKey").getKeyID())
+        RSAKey signingKey = provider.getKeySource().getSigningKey();
+        JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.parse(signingKey.getAlgorithm().getName()))
+                .keyID(signingKey.getKeyID())
                 .build();
         SignedJWT idToken = new SignedJWT(header, claimsBuilder.build());
         try {
-            idToken.sign(new RSASSASigner(signingKey.toRSAKey().toRSAPrivateKey()));
+            idToken.sign(new RSASSASigner(signingKey.toRSAPrivateKey()));
             return idToken.serialize();
         } catch (JOSEException e) {
             throw new RuntimeException(e);
@@ -217,41 +303,35 @@ public class FakeIdProvider {
     }
 
     public void jwksEndpoint(@NotNull Context context) {
-        context.json(configuration.getJwks().toPublicJWKSet().toJSONObject(true));
+        context.json(provider.getKeySource().getPublicJwks().toJSONObject());
     }
 
     public void introspectionEndpoint(@NotNull Context context) {
         Map<String, List<String>> body = context.formParamMap();
         String token = body.get("token").get(0);
-        Grant grant = issuedTokens.get(token);
-        if(grant != null) {
-            // In a real implementation, you would check the token validity and other claims
+        Optional<com.oidc4j.v2.lib.store.IssuedGrant> found = provider.getIssuedGrantStore().findByAccessToken(token);
+        if (found.isPresent()) {
+            com.oidc4j.v2.lib.store.IssuedGrant grant = found.get();
             context.json(Map.of(
                     "active", true,
                     "client_id", grant.getClientId(),
-                    "sub", grant.getSub(),
-                    "scope", String.join(" ", grant.getScopes()),
-                    "exp", System.currentTimeMillis() / 1000L + 3600,
-                    "iat", System.currentTimeMillis() / 1000L
+                    "sub", configuration.getClaims().get("sub").toString(),
+                    "scope", String.join(" ", grant.getGrantedScopes()),
+                    "exp", grant.getExpiresAt().getEpochSecond(),
+                    "iat", grant.getIssuedAt().getEpochSecond()
             ));
         } else {
             context.json(Map.of("active", false));
         }
     }
 
-    public Map<String, AuthRequest> getRequests() {
-        return requests;
-    }
-
-    public Map<String, Grant> getIssuedTokens() {
-        return issuedTokens;
-    }
-
     private Map<String, Object> authCodeGrant(String authCode, String scope) {
-        AuthRequest request = requests.get(authCode);
-        String clientId = request.getClientId();
+        com.oidc4j.v2.lib.store.PendingGrant pending = provider.getPendingGrantStore()
+                .consume(authCode)
+                .orElseThrow(() -> new IllegalStateException("Unknown authorization code: " + authCode));
+        String clientId = pending.getClientId();
         String idToken = null;
-        Set<String> scopes = request.getScopes();
+        Set<String> scopes = pending.getConsentedScopes();
         if(scopes == null) {
             scopes = Collections.emptySet();
         }
@@ -259,15 +339,12 @@ public class FakeIdProvider {
             scope = String.join(" ", scopes);
         }
         if(scope.contains("openid")) {
-            idToken = idToken(request.getNonce(), clientId);
+            idToken = idToken(noncesByCode.remove(authCode), clientId);
+        } else {
+            noncesByCode.remove(authCode);
         }
         String accessToken = RandomStringUtils.randomAlphanumeric(32);
-        Grant grant = new Grant();
-        grant.setAccessToken(accessToken);
-        grant.setClientId(request.getClientId());
-        grant.setScope(scopes);
-        grant.setSub(configuration.getClaims().get("sub").toString());
-        issuedTokens.put(accessToken, grant);
+        saveIssuedGrant(clientId, "authorization_code", scopes, accessToken);
 
         LOG.info("Token issued using auth code grant for client {}", clientId);
         Map<String,Object> res = new HashMap<>();
@@ -294,12 +371,7 @@ public class FakeIdProvider {
         } else {
             scope = "";
         }
-        Grant grant = new Grant();
-        grant.setAccessToken(accessToken);
-        grant.setClientId(clientId);
-        grant.setScope(scopes);
-        grant.setSub(configuration.getClaims().get("sub").toString());
-        issuedTokens.put(accessToken, grant);
+        saveIssuedGrant(clientId, "client_credentials", scopes, accessToken);
 
         LOG.info("Token issued using client credentials grant for client {}", clientId);
         Map<String,Object> res = new HashMap<>();
@@ -311,6 +383,19 @@ public class FakeIdProvider {
         res.put("client_id", clientId);
         res.put("grant_type", "client_credentials");
         return res;
+    }
+
+    private void saveIssuedGrant(String clientId, String grantType, Set<String> scopes, String accessToken) {
+        Instant now = Instant.now();
+        provider.getIssuedGrantStore().save(new com.oidc4j.v2.lib.store.IssuedGrant(
+                UUID.randomUUID().toString(),
+                clientId,
+                grantType,
+                scopes,
+                accessToken,
+                null,
+                now,
+                now.plus(1L, ChronoUnit.HOURS)));
     }
 
     private boolean hasValidValue(List<String> values) {
