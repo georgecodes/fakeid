@@ -26,8 +26,19 @@ import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import com.oidc4j.v2.lib.Provider;
+import com.oidc4j.v2.lib.ProviderConfiguration;
+import com.oidc4j.v2.lib.SigningKeySource;
+import com.oidc4j.v2.lib.store.Client;
+import com.oidc4j.v2.lib.store.ClientStore;
+import com.oidc4j.v2.lib.store.InMemoryIssuedGrantStore;
+import com.oidc4j.v2.lib.store.InMemoryPendingGrantStore;
+import com.oidc4j.v2.lib.store.InMemoryUserStore;
+import com.oidc4j.v2.lib.store.User;
+import com.oidc4j.v2.lib.store.UserStore;
 import io.javalin.http.Context;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.jetbrains.annotations.NotNull;
@@ -47,6 +58,7 @@ public class FakeIdProvider {
     private final String baseUrl;
     private final DiscoveryDocument discoveryDocument;
     private final Configuration configuration;
+    private final Provider provider;
     private Map<String, AuthRequest> requests = new ConcurrentHashMap<>();
     private Map<String, Grant> issuedTokens = new ConcurrentHashMap<>();
 
@@ -54,6 +66,68 @@ public class FakeIdProvider {
         this.baseUrl = configuration.getIssuer();
         this.configuration = configuration;
         this.discoveryDocument = DiscoveryDocument.create(baseUrl);
+        this.provider = buildV2Provider(configuration);
+    }
+
+    private static Provider buildV2Provider(Configuration configuration) {
+        ProviderConfiguration providerConfig = ProviderConfiguration.builder()
+                .issuer(configuration.getIssuer())
+                .grantType("authorization_code")
+                .grantType("client_credentials")
+                .grantType("refresh_token")
+                .clientAuthMethod("client_secret_basic")
+                .clientAuthMethod("client_secret_post")
+                .scope("openid")
+                .scope("profile")
+                .scope("email")
+                .build();
+
+        RSAKey signingKey = (RSAKey) configuration.getJwks().getKeyByKeyId("signingKey");
+        SigningKeySource keySource = new SigningKeySource(signingKey);
+
+        ClientStore clientStore = new AutoAcceptClientStore();
+        UserStore userStore = new InMemoryUserStore();
+        Object subject = configuration.getClaims().get("sub");
+        if (subject != null) {
+            userStore.save(userFromClaims(subject.toString(), configuration.getClaims()));
+        }
+
+        return new Provider(
+                providerConfig,
+                clientStore,
+                new InMemoryPendingGrantStore(),
+                new InMemoryIssuedGrantStore(),
+                userStore,
+                keySource);
+    }
+
+    private static User userFromClaims(String subject, Map<String, Object> claims) {
+        return new User(
+                subject,
+                str(claims.get("name")),
+                str(claims.get("preferred_username")),
+                str(claims.get("given_name")),
+                str(claims.get("family_name")),
+                str(claims.get("email")),
+                Boolean.TRUE.equals(claims.get("email_verified")));
+    }
+
+    private static String str(Object v) {
+        return v == null ? null : v.toString();
+    }
+
+    private static final class AutoAcceptClientStore implements ClientStore {
+        private final Map<String, Client> clients = new ConcurrentHashMap<>();
+
+        @Override
+        public Optional<Client> findById(String id) {
+            return Optional.of(clients.computeIfAbsent(id, cid -> new Client(cid, "")));
+        }
+
+        @Override
+        public void save(Client client) {
+            clients.put(client.getId(), client);
+        }
     }
 
     public void getDiscoveryDocument(@NotNull Context context) {
