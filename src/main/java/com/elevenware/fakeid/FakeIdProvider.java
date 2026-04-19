@@ -41,6 +41,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class FakeIdProvider {
 
@@ -241,8 +242,13 @@ public class FakeIdProvider {
         }
         ctx.setClientId(authClientId);
         ctx.setClientSecret("");
-        if (scope != null && !scope.isEmpty()) {
-            ctx.setRequestedScopes(Set.of(scope.split(" ")));
+        if (scope != null && !scope.isBlank()) {
+            Set<String> requestedScopes = Arrays.stream(scope.trim().split("\\s+"))
+                    .filter(s -> !s.isBlank())
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+            if (!requestedScopes.isEmpty()) {
+                ctx.setRequestedScopes(requestedScopes);
+            }
         }
         provider.fireTokenRequest(ctx);
         if (ctx.hasErrors()) {
