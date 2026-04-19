@@ -53,7 +53,6 @@ public class FakeIdProvider {
 
     private final Configuration configuration;
     private final Provider provider;
-    private final Map<String, String> noncesByCode = new ConcurrentHashMap<>();
 
     public FakeIdProvider(Configuration configuration) {
         this.configuration = configuration;
@@ -228,13 +227,11 @@ public class FakeIdProvider {
                 redirectUri,
                 null,
                 null,
+                nonce,
                 now,
                 now.plus(10L, ChronoUnit.MINUTES));
         pending.grant();
         provider.getPendingGrantStore().save(pending);
-        if (nonce != null) {
-            noncesByCode.put(code, nonce);
-        }
     }
 
     private String idToken(String nonce, String clientId) {
@@ -300,9 +297,7 @@ public class FakeIdProvider {
             scope = String.join(" ", scopes);
         }
         if(scope.contains("openid")) {
-            idToken = idToken(noncesByCode.remove(authCode), clientId);
-        } else {
-            noncesByCode.remove(authCode);
+            idToken = idToken(pending.getNonce(), clientId);
         }
         String accessToken = RandomStringUtils.randomAlphanumeric(32);
         saveIssuedGrant(clientId, "authorization_code", scopes, accessToken);
