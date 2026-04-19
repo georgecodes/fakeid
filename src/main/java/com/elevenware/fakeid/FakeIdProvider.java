@@ -229,9 +229,24 @@ public class FakeIdProvider {
                 .append(authRequest.getRedirectUri());
         char separator = '?';
         String authCode = RandomStringUtils.randomAlphanumeric(16);
+        String clientId = params.get("client_id").get(0);
+        String subject = configuration.getClaims().get("sub").toString();
         String responseType = authRequest.getResponseType();
         if(responseType.contains("code")) {
-          responseBuilder.append(separator)
+            Instant now = Instant.now();
+            com.oidc4j.v2.lib.store.PendingGrant pending = new com.oidc4j.v2.lib.store.PendingGrant(
+                    authCode,
+                    clientId,
+                    subject,
+                    authRequest.getScopes(),
+                    authRequest.getRedirectUri(),
+                    null,
+                    null,
+                    now,
+                    now.plus(10L, ChronoUnit.MINUTES));
+            pending.grant();
+            provider.getPendingGrantStore().save(pending);
+            responseBuilder.append(separator)
                   .append("code=").append(authCode);
             separator = '&';
         }
@@ -239,17 +254,27 @@ public class FakeIdProvider {
             String accessToken = RandomStringUtils.randomAlphanumeric(32);
             Grant grant = new Grant();
             grant.setAccessToken(accessToken);
-            grant.setClientId(params.get("client_id").get(0));
-            grant.setSub(configuration.getClaims().get("sub").toString());
+            grant.setClientId(clientId);
+            grant.setSub(subject);
             grant.setScope(authRequest.getScopes());
             issuedTokens.put(accessToken, grant);
+            Instant now = Instant.now();
+            provider.getIssuedGrantStore().save(new com.oidc4j.v2.lib.store.IssuedGrant(
+                    UUID.randomUUID().toString(),
+                    clientId,
+                    "implicit",
+                    authRequest.getScopes(),
+                    accessToken,
+                    null,
+                    now,
+                    now.plus(1L, ChronoUnit.HOURS)));
             responseBuilder.append(separator)
                     .append("token=").append(accessToken);
             separator = '&';
         }
         if (responseType.contains("id_token")) {
             responseBuilder.append(separator)
-                    .append("id_token=").append(idToken(authRequest.getNonce(), params.get("client_id").get(0)));
+                    .append("id_token=").append(idToken(authRequest.getNonce(), clientId));
             separator = '&';
         }
         if (authRequest.getState() != null) {
@@ -276,14 +301,13 @@ public class FakeIdProvider {
         claimsBuilder.issueTime(Date.from(now));
         now = now.plus(1L, ChronoUnit.HOURS);
         claimsBuilder.expirationTime(Date.from(now));
-        JWK signingKey = configuration.getJwks().getKeyByKeyId("signingKey");
-        String alg = signingKey.getAlgorithm().getName();
-        JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.parse(alg))
-                .keyID(configuration.getJwks().getKeyByKeyId("signingKey").getKeyID())
+        RSAKey signingKey = provider.getKeySource().getSigningKey();
+        JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.parse(signingKey.getAlgorithm().getName()))
+                .keyID(signingKey.getKeyID())
                 .build();
         SignedJWT idToken = new SignedJWT(header, claimsBuilder.build());
         try {
-            idToken.sign(new RSASSASigner(signingKey.toRSAKey().toRSAPrivateKey()));
+            idToken.sign(new RSASSASigner(signingKey.toRSAPrivateKey()));
             return idToken.serialize();
         } catch (JOSEException e) {
             throw new RuntimeException(e);
