@@ -59,7 +59,7 @@ public class FakeIdProvider {
     private final DiscoveryDocument discoveryDocument;
     private final Configuration configuration;
     private final Provider provider;
-    private Map<String, AuthRequest> requests = new ConcurrentHashMap<>();
+    private final Map<String, String> noncesByCode = new ConcurrentHashMap<>();
     private Map<String, Grant> issuedTokens = new ConcurrentHashMap<>();
 
     public FakeIdProvider(Configuration configuration) {
@@ -233,19 +233,8 @@ public class FakeIdProvider {
         String subject = configuration.getClaims().get("sub").toString();
         String responseType = authRequest.getResponseType();
         if(responseType.contains("code")) {
-            Instant now = Instant.now();
-            com.oidc4j.v2.lib.store.PendingGrant pending = new com.oidc4j.v2.lib.store.PendingGrant(
-                    authCode,
-                    clientId,
-                    subject,
-                    authRequest.getScopes(),
-                    authRequest.getRedirectUri(),
-                    null,
-                    null,
-                    now,
-                    now.plus(10L, ChronoUnit.MINUTES));
-            pending.grant();
-            provider.getPendingGrantStore().save(pending);
+            savePendingAuthCode(authCode, clientId, subject, authRequest.getScopes(),
+                    authRequest.getRedirectUri(), authRequest.getNonce());
             responseBuilder.append(separator)
                   .append("code=").append(authCode);
             separator = '&';
@@ -283,9 +272,28 @@ public class FakeIdProvider {
         }
 
         LOG.info("Authorization response: {}", responseBuilder.toString());
-        requests.put(authCode, authRequest);
         String redirect = responseBuilder.toString();
         context.redirect(redirect);
+    }
+
+    public void savePendingAuthCode(String code, String clientId, String subject,
+                                    Set<String> scopes, String redirectUri, String nonce) {
+        Instant now = Instant.now();
+        com.oidc4j.v2.lib.store.PendingGrant pending = new com.oidc4j.v2.lib.store.PendingGrant(
+                code,
+                clientId,
+                subject,
+                scopes == null ? Set.of() : scopes,
+                redirectUri,
+                null,
+                null,
+                now,
+                now.plus(10L, ChronoUnit.MINUTES));
+        pending.grant();
+        provider.getPendingGrantStore().save(pending);
+        if (nonce != null) {
+            noncesByCode.put(code, nonce);
+        }
     }
 
     private String idToken(String nonce, String clientId) {
@@ -337,19 +345,17 @@ public class FakeIdProvider {
         }
     }
 
-    public Map<String, AuthRequest> getRequests() {
-        return requests;
-    }
-
     public Map<String, Grant> getIssuedTokens() {
         return issuedTokens;
     }
 
     private Map<String, Object> authCodeGrant(String authCode, String scope) {
-        AuthRequest request = requests.get(authCode);
-        String clientId = request.getClientId();
+        com.oidc4j.v2.lib.store.PendingGrant pending = provider.getPendingGrantStore()
+                .consume(authCode)
+                .orElseThrow(() -> new IllegalStateException("Unknown authorization code: " + authCode));
+        String clientId = pending.getClientId();
         String idToken = null;
-        Set<String> scopes = request.getScopes();
+        Set<String> scopes = pending.getConsentedScopes();
         if(scopes == null) {
             scopes = Collections.emptySet();
         }
@@ -357,15 +363,27 @@ public class FakeIdProvider {
             scope = String.join(" ", scopes);
         }
         if(scope.contains("openid")) {
-            idToken = idToken(request.getNonce(), clientId);
+            idToken = idToken(noncesByCode.remove(authCode), clientId);
+        } else {
+            noncesByCode.remove(authCode);
         }
         String accessToken = RandomStringUtils.randomAlphanumeric(32);
         Grant grant = new Grant();
         grant.setAccessToken(accessToken);
-        grant.setClientId(request.getClientId());
+        grant.setClientId(clientId);
         grant.setScope(scopes);
-        grant.setSub(configuration.getClaims().get("sub").toString());
+        grant.setSub(pending.getSubject());
         issuedTokens.put(accessToken, grant);
+        Instant now = Instant.now();
+        provider.getIssuedGrantStore().save(new com.oidc4j.v2.lib.store.IssuedGrant(
+                UUID.randomUUID().toString(),
+                clientId,
+                "authorization_code",
+                scopes,
+                accessToken,
+                null,
+                now,
+                now.plus(1L, ChronoUnit.HOURS)));
 
         LOG.info("Token issued using auth code grant for client {}", clientId);
         Map<String,Object> res = new HashMap<>();

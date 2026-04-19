@@ -54,11 +54,7 @@ public class IdTokenSigningTests {
         String aud = "client";
 
         FakeIdProvider fakeIdProvider = new FakeIdProvider(Configuration.builder().build());
-        AuthRequest request = new AuthRequest();
-        request.setNonce(nonce);
-        request.setClientId(aud);
-        request.setScopes(Set.of("openid"));
-        fakeIdProvider.getRequests().put(code, request);
+        fakeIdProvider.savePendingAuthCode(code, aud, "sub", Set.of("openid"), null, nonce);
         Context context = Mockito.mock(Context.class);
         when(context.formParam("grant_type")).thenReturn("authorization_code");
         when(context.formParam("scope")).thenReturn("read openid");
@@ -93,11 +89,7 @@ public class IdTokenSigningTests {
         FakeIdProvider fakeIdProvider = new FakeIdProvider(Configuration.builder()
                 .jwks(jwks)
                 .build());
-        AuthRequest request = new AuthRequest();
-        request.setNonce(nonce);
-        request.setClientId(aud);
-        request.setScopes(Set.of("openid"));
-        fakeIdProvider.getRequests().put(code, request);
+        fakeIdProvider.savePendingAuthCode(code, aud, "sub", Set.of("openid"), null, nonce);
         Context context = Mockito.mock(Context.class);
         when(context.formParam("grant_type")).thenReturn("authorization_code");
         when(context.formParam("scope")).thenReturn("read openid");
@@ -130,11 +122,7 @@ public class IdTokenSigningTests {
                 .build();
 
         FakeIdProvider fakeIdProvider = new FakeIdProvider(cfg);
-        AuthRequest request = new AuthRequest();
-        request.setNonce(nonce);
-        request.setClientId(aud);
-        request.setScopes(Set.of("openid"));
-        fakeIdProvider.getRequests().put(code, request);
+        fakeIdProvider.savePendingAuthCode(code, aud, "sub", Set.of("openid"), null, nonce);
         Context context = Mockito.mock(Context.class);
         when(context.formParam("grant_type")).thenReturn("authorization_code");
         when(context.formParam("scope")).thenReturn("read openid");
