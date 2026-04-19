@@ -54,13 +54,13 @@ public class FakeIdApplication {
                             it.anyHost();
                         });
                     });
+                    c.routes.get("/.well-known/openid-configuration", provider::getDiscoveryDocument);
+                    c.routes.get("/jwks", provider::jwksEndpoint);
+                    c.routes.get("/authorize", provider::authorizationEndpoint);
+                    c.routes.post("/token", provider::tokenEndpoint);
+                    c.routes.post("/token/introspect", provider::introspectionEndpoint);
+                    c.routes.get("/userinfo", provider::userInfoEndpoint);
                 })
-                .get("/.well-known/openid-configuration", provider::getDiscoveryDocument)
-                .get("/jwks", provider::jwksEndpoint)
-                .get("/authorize", provider::authorizationEndpoint)
-                .post("/token", provider::tokenEndpoint)
-                .post("/token/introspect", provider::introspectionEndpoint)
-                .get("/userinfo", provider::userInfoEndpoint)
                 .start(configuration.getPort());
         LOG.info("Fake ID started");
         return this;
