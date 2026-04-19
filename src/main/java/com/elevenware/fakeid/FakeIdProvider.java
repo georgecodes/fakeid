@@ -32,8 +32,7 @@ import com.nimbusds.jwt.SignedJWT;
 import com.oidc4j.v2.lib.Provider;
 import com.oidc4j.v2.lib.ProviderConfiguration;
 import com.oidc4j.v2.lib.SigningKeySource;
-import com.oidc4j.v2.lib.store.Client;
-import com.oidc4j.v2.lib.store.ClientStore;
+import com.oidc4j.v2.lib.store.AcceptAllClientStore;
 import com.oidc4j.v2.lib.store.InMemoryIssuedGrantStore;
 import com.oidc4j.v2.lib.store.InMemoryPendingGrantStore;
 import com.oidc4j.v2.lib.store.InMemoryUserStore;
@@ -78,9 +77,8 @@ public class FakeIdProvider {
                 .build();
 
         RSAKey signingKey = (RSAKey) configuration.getJwks().getKeyByKeyId("signingKey");
-        SigningKeySource keySource = new SigningKeySource(signingKey);
+        SigningKeySource keySource = new SigningKeySource(signingKey, configuration.getSigningAlgorithm());
 
-        ClientStore clientStore = new AutoAcceptClientStore();
         UserStore userStore = new InMemoryUserStore();
         Object subject = configuration.getClaims().get("sub");
         if (subject != null) {
@@ -89,7 +87,7 @@ public class FakeIdProvider {
 
         return new Provider(
                 providerConfig,
-                clientStore,
+                new AcceptAllClientStore(),
                 new InMemoryPendingGrantStore(),
                 new InMemoryIssuedGrantStore(),
                 userStore,
@@ -97,32 +95,27 @@ public class FakeIdProvider {
     }
 
     private static User userFromClaims(String subject, Map<String, Object> claims) {
-        return new User(
-                subject,
-                str(claims.get("name")),
-                str(claims.get("preferred_username")),
-                str(claims.get("given_name")),
-                str(claims.get("family_name")),
-                str(claims.get("email")),
-                Boolean.TRUE.equals(claims.get("email_verified")));
+        User.Builder builder = User.builder(subject)
+                .name(str(claims.get("name")))
+                .preferredUsername(str(claims.get("preferred_username")))
+                .givenName(str(claims.get("given_name")))
+                .familyName(str(claims.get("family_name")))
+                .email(str(claims.get("email")))
+                .emailVerified(Boolean.TRUE.equals(claims.get("email_verified")));
+        for (Map.Entry<String, Object> entry : claims.entrySet()) {
+            String key = entry.getKey();
+            if (!STANDARD_CLAIM_KEYS.contains(key)) {
+                builder.claim(key, entry.getValue());
+            }
+        }
+        return builder.build();
     }
+
+    private static final Set<String> STANDARD_CLAIM_KEYS = Set.of(
+            "sub", "name", "preferred_username", "given_name", "family_name", "email", "email_verified");
 
     private static String str(Object v) {
         return v == null ? null : v.toString();
-    }
-
-    private static final class AutoAcceptClientStore implements ClientStore {
-        private final Map<String, Client> clients = new ConcurrentHashMap<>();
-
-        @Override
-        public Optional<Client> findById(String id) {
-            return Optional.of(clients.computeIfAbsent(id, cid -> new Client(cid, "")));
-        }
-
-        @Override
-        public void save(Client client) {
-            clients.put(client.getId(), client);
-        }
     }
 
     public void getDiscoveryDocument(@NotNull Context context) {
