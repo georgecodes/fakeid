@@ -131,7 +131,7 @@ public class FakeIdProvider {
     }
 
     public void getDiscoveryDocument(@NotNull Context context) {
-        context.json(discoveryDocument);
+        context.json(provider.discoveryDocument());
     }
 
     public void userInfoEndpoint(@NotNull Context context) {
@@ -291,7 +291,7 @@ public class FakeIdProvider {
     }
 
     public void jwksEndpoint(@NotNull Context context) {
-        context.json(configuration.getJwks().toPublicJWKSet().toJSONObject(true));
+        context.json(provider.getKeySource().getPublicJwks().toJSONObject());
     }
 
     public void introspectionEndpoint(@NotNull Context context) {
