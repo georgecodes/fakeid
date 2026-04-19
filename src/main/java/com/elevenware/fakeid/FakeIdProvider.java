@@ -168,51 +168,23 @@ public class FakeIdProvider {
                 return;
             }
         }
-        AuthRequest authRequest = new AuthRequest();
-        authRequest.setClientId(params.get("client_id").get(0));
-        authRequest.setScopes(Set.copyOf(params.get("scope")));
-        authRequest.setRedirectUri(params.get("redirect_uri").get(0));
-        authRequest.setResponseType(params.get("response_type").get(0));
-        if(hasValidValue(params.get("state"))) {
-            authRequest.setState(params.get("state").get(0));
+        com.oidc4j.v2.lib.AuthorizationRequest.Builder builder = com.oidc4j.v2.lib.AuthorizationRequest.builder()
+                .clientId(params.get("client_id").get(0))
+                .responseType(params.get("response_type").get(0))
+                .redirectUri(params.get("redirect_uri").get(0))
+                .scopes(Set.of(params.get("scope").get(0).split(" ")));
+        if (hasValidValue(params.get("state"))) {
+            builder.state(params.get("state").get(0));
         }
-        if(params.containsKey("nonce")) {
-            authRequest.setNonce(params.get("nonce").get(0));
+        if (hasValidValue(params.get("nonce"))) {
+            builder.nonce(params.get("nonce").get(0));
         }
-        LOG.info("Auth Request for client {} with scopes {}", authRequest.getClientId(), authRequest.getScopes());
-        StringBuilder responseBuilder = new StringBuilder()
-                .append(authRequest.getRedirectUri());
-        char separator = '?';
-        String authCode = RandomStringUtils.randomAlphanumeric(16);
-        String clientId = params.get("client_id").get(0);
+        com.oidc4j.v2.lib.AuthorizationRequest request = builder.build();
         String subject = configuration.getClaims().get("sub").toString();
-        String responseType = authRequest.getResponseType();
-        if(responseType.contains("code")) {
-            savePendingAuthCode(authCode, clientId, subject, authRequest.getScopes(),
-                    authRequest.getRedirectUri(), authRequest.getNonce());
-            responseBuilder.append(separator)
-                  .append("code=").append(authCode);
-            separator = '&';
-        }
-        if(responseType.contains("token")) {
-            String accessToken = RandomStringUtils.randomAlphanumeric(32);
-            saveIssuedGrant(clientId, "implicit", authRequest.getScopes(), accessToken);
-            responseBuilder.append(separator)
-                    .append("token=").append(accessToken);
-            separator = '&';
-        }
-        if (responseType.contains("id_token")) {
-            responseBuilder.append(separator)
-                    .append("id_token=").append(idToken(authRequest.getNonce(), clientId));
-            separator = '&';
-        }
-        if (authRequest.getState() != null) {
-            responseBuilder.append(separator)
-                    .append("state=").append(authRequest.getState());
-        }
-
-        LOG.info("Authorization response: {}", responseBuilder.toString());
-        String redirect = responseBuilder.toString();
+        LOG.info("Auth Request for client {} with scopes {}", request.getClientId(), request.getScopes());
+        com.oidc4j.v2.lib.AuthorizationResponse response = provider.authorizeDirectly(request, subject);
+        String redirect = response.buildQueryRedirect();
+        LOG.info("Authorization response: {}", redirect);
         context.redirect(redirect);
     }
 

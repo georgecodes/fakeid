@@ -69,7 +69,7 @@ public class AuthorizedGrantTests {
         Optional<String> oLocation = response.headers().firstValue("Location");
         URI location = oLocation.map(URI::create).orElseThrow(AssertionError::new);
         Map<String, String> responseQuery = TestUtils.buildQueryMap(location.getQuery());
-        String accessToken = responseQuery.get("token");
+        String accessToken = responseQuery.get("access_token");
         assertEquals(state, responseQuery.get("state"));
         assertNotNull(accessToken);
         assertNull(responseQuery.get("code"));
@@ -100,7 +100,7 @@ public class AuthorizedGrantTests {
         URI location = oLocation.map(URI::create).orElseThrow(AssertionError::new);
         Map<String, String> responseQuery = TestUtils.buildQueryMap(location.getQuery());
         assertEquals(state, responseQuery.get("state"));
-        assertNotNull(responseQuery.get("token"));
+        assertNotNull(responseQuery.get("access_token"));
         assertNull(responseQuery.get("code"));
         assertNotNull(responseQuery.get("id_token"));
     }
