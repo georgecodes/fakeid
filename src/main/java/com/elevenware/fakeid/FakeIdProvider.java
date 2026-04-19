@@ -55,16 +55,12 @@ public class FakeIdProvider {
 
     private static final Logger LOG = LoggerFactory.getLogger(FakeIdProvider.class);
 
-    private final String baseUrl;
-    private final DiscoveryDocument discoveryDocument;
     private final Configuration configuration;
     private final Provider provider;
     private final Map<String, String> noncesByCode = new ConcurrentHashMap<>();
 
     public FakeIdProvider(Configuration configuration) {
-        this.baseUrl = configuration.getIssuer();
         this.configuration = configuration;
-        this.discoveryDocument = DiscoveryDocument.create(baseUrl);
         this.provider = buildV2Provider(configuration);
     }
 
