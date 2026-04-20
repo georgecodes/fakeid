@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="{{ site.LanguageCode | default "en" }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ block "title" . }}{{ if .IsHome }}{{ site.Title }} - Documentation{{ else }}{{ .Title }} - {{ site.Title }}{{ end }}{{ end }}</title>
+  <link rel="icon" href="{{ "images/favicon.ico" | relURL }}">
+  <link rel="stylesheet" href="{{ "style.css" | relURL }}">
+</head>
+<body>
+  <button class="menu-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')">&#9776;</button>
+  <div class="layout">
+    <aside class="sidebar">
+      <a href="{{ "/" | relURL }}" class="logo">
+        <img src="{{ "images/logo-small.png" | relURL }}" alt="{{ site.Title }} logo">
+        <span>{{ site.Title }}</span>
+      </a>
+      <nav>
+        {{ $current := . }}
+        {{ range site.Menus.main }}
+        <a href="{{ .URL | relURL }}"{{ if eq $current.RelPermalink .URL }} class="active"{{ end }}>{{ .Name }}</a>
+        {{ end }}
+      </nav>
+      <a href="{{ site.Params.githubUrl }}" class="github-link">View on GitHub</a>
+    </aside>
+    <main class="main">
+      {{ block "main" . }}{{ end }}
+    </main>
+  </div>
+</body>
+</html>
