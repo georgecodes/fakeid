@@ -44,7 +44,7 @@
         <dependency>
             <groupId>com.elevenware.oidc4j</groupId>
             <artifactId>lib-oidc4j</artifactId>
-            <version>0.0.5-SNAPSHOT</version>
+            <version>0.1.0</version>
             <exclusions>
                 <exclusion>
                     <groupId>ch.qos.logback</groupId>
