@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  fakeid:
+    build: .
+    ports:
+      - "8091:8091"
+    hostname: auth.localtest.me
+    networks:
+      net:
+        aliases:
+          - auth.localtest.me
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8091/.well-known/openid-configuration"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    environment:
+      FAKEID_ISSUER: http://auth.localtest.me:8091
+  relying-party-one:
+    build: examples/backchannel
+    networks:
+      net:
+    depends_on:
+      fakeid:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      ISSUER: http://auth.localtest.me:8091
+      CLIENT_ID: client1
+      CLIENT_SECRET: secret
+      BASE_URL: http://localhost:3000
+
+networks:
+  net:
+    driver: bridge
