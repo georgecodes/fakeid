@@ -1,0 +1,18 @@
+{
+  "name": "implicit-oidc-app",
+  "version": "1.0.0",
+  "description": "Vue.js SPA demonstrating OIDC implicit grant",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.4.0",
+    "oidc-client-ts": "^3.0.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.0",
+    "vite": "^5.0.0"
+  }
+}

@@ -33,6 +33,19 @@ services:
       CLIENT_SECRET: secret
       BASE_URL: http://localhost:3000
 
+  relying-party-implicit:
+    build: examples/implicit
+    networks:
+      net:
+    depends_on:
+      fakeid:
+        condition: service_healthy
+    ports:
+      - "3001:80"
+    environment:
+      ISSUER: http://auth.localtest.me:8091
+      CLIENT_ID: client1
+
 networks:
   net:
     driver: bridge
