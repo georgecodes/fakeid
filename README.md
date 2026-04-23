@@ -47,6 +47,65 @@ services:
 
 The DNS entry auth.localtest.me is externally resolvable to localhost, and we have told docker to allow the fakeid container to be reached via it internally as well.
 
+## Using Fake ID as a Java library
+
+Fake ID is published to Maven Central, so you can embed it directly in a Java project — useful in integration tests
+where spinning up a Docker container would be heavy.
+
+```xml
+<dependency>
+    <groupId>com.elevenware</groupId>
+    <artifactId>fakeid</artifactId>
+    <version>0.0.3</version>
+</dependency>
+```
+
+The simplest usage starts Fake ID on a fixed port with default claims and a freshly generated signing key:
+
+```java
+Configuration configuration = Configuration.builder()
+        .port(8091)
+        .build();
+
+FakeIdApplication app = new FakeIdApplication(configuration).start();
+
+// ... point your relying party at http://localhost:8091 ...
+
+app.stop();
+```
+
+For tests, bind to an ephemeral port and read it back from the running application:
+
+```java
+FakeIdApplication app = new FakeIdApplication(Configuration.builder().build()).start();
+int port = app.port();
+String issuer = "http://localhost:" + port;
+```
+
+You can supply your own signing key (so JWKS is stable across restarts) and override the claims that will
+be returned in id tokens:
+
+```java
+RSAKey jwk = new RSAKeyGenerator(2048)
+        .keyUse(KeyUse.SIGNATURE)
+        .keyID("signingKey")
+        .algorithm(Algorithm.parse("RS256"))
+        .generate();
+
+Configuration configuration = Configuration.builder()
+        .port(8091)
+        .jwks(new JWKSet(jwk))
+        .claims(Map.of(
+                "sub", "jeff@example.com",
+                "additionalClaims", Map.of("claim", "claimValue")))
+        .build();
+
+FakeIdApplication app = new FakeIdApplication(configuration).start();
+```
+
+Everything the Docker image exposes via environment variables is available on the `Configuration.Builder`, so library
+and container usage share the same underlying configuration model.
+
 ## Configuration
 
 There are a few ways to configure Fake ID. The simplest way is to simply start the container, and allow it to provide sensible defaults.
