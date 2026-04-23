@@ -26,4 +26,13 @@ public record AuthorizeResponse(
         String accessToken,
         String idToken,
         String state) {
+
+    @Override
+    public String toString() {
+        return "AuthorizeResponse[redirectUri=" + redirectUri
+                + ", code=[REDACTED]"
+                + ", accessToken=[REDACTED]"
+                + ", idToken=[REDACTED]"
+                + ", state=" + state + "]";
+    }
 }
