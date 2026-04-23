@@ -20,6 +20,7 @@ package com.elevenware.fakeid;
  * #L%
  */
 
+import com.elevenware.fakeid.core.error.UnsupportedGrantTypeException;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
@@ -148,7 +149,7 @@ public class FakeIdProvider {
                 context.json(response);
                 break;
             default:
-                context.status(400).json(Map.of("error", "unsupported_grant_type", "error_description", "unsupported grant type: " + grantTypeName));
+                throw new UnsupportedGrantTypeException(grantTypeName);
         }
 
     }

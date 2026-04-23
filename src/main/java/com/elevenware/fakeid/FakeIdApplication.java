@@ -20,6 +20,7 @@ package com.elevenware.fakeid;
  * #L%
  */
 
+import com.elevenware.fakeid.core.error.OidcException;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import io.javalin.Javalin;
@@ -27,6 +28,7 @@ import io.javalin.json.JavalinJackson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
 import java.util.Optional;
 
 public class FakeIdApplication {
@@ -48,20 +50,24 @@ public class FakeIdApplication {
         var provider = new FakeIdProvider(configuration);
 
         server = Javalin.create(c -> {
-                    c.jsonMapper(jsonMapper);
-                    c.bundledPlugins.enableCors(cors -> {
-                        cors.addRule(it -> {
-                            it.anyHost();
-                        });
-                    });
-                    c.routes.get("/.well-known/openid-configuration", provider::getDiscoveryDocument);
-                    c.routes.get("/jwks", provider::jwksEndpoint);
-                    c.routes.get("/authorize", provider::authorizationEndpoint);
-                    c.routes.post("/token", provider::tokenEndpoint);
-                    c.routes.post("/token/introspect", provider::introspectionEndpoint);
-                    c.routes.get("/userinfo", provider::userInfoEndpoint);
-                })
-                .start(configuration.getPort());
+            c.jsonMapper(jsonMapper);
+            c.bundledPlugins.enableCors(cors -> {
+                cors.addRule(it -> {
+                    it.anyHost();
+                });
+            });
+            c.routes.exception(OidcException.class, (e, ctx) -> ctx
+                    .status(e.httpStatus())
+                    .json(Map.of(
+                            "error", e.error(),
+                            "error_description", e.errorDescription())));
+            c.routes.get("/.well-known/openid-configuration", provider::getDiscoveryDocument);
+            c.routes.get("/jwks", provider::jwksEndpoint);
+            c.routes.get("/authorize", provider::authorizationEndpoint);
+            c.routes.post("/token", provider::tokenEndpoint);
+            c.routes.post("/token/introspect", provider::introspectionEndpoint);
+            c.routes.get("/userinfo", provider::userInfoEndpoint);
+        }).start(configuration.getPort());
         LOG.info("Fake ID started");
         return this;
     }

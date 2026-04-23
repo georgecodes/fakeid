@@ -138,5 +138,28 @@ public class ClientCredentialsGrantTests {
         assertEquals(401, response.statusCode());
     }
 
+    @Test
+    void unknownGrantTypeIsRejected() throws IOException, InterruptedException {
+
+        HttpClient client = HttpClient.newHttpClient();
+
+        Map<String, String> tokenRequest = Map.of(
+                "grant_type", "made_up_grant",
+                "client_id", "client1",
+                "client_secret", "secret1"
+        );
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(String.format("http://localhost:%d/token", port)))
+                .POST(HttpRequest.BodyPublishers.ofString(getFormDataAsString(tokenRequest)))
+                .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(400, response.statusCode());
+        Map<String, Object> body = TestUtils.mapper().readValue(response.body(), Map.class);
+        assertEquals("unsupported_grant_type", body.get("error"));
+        assertEquals("unsupported grant type: made_up_grant", body.get("error_description"));
+    }
+
 
 }
