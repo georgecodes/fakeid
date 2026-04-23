@@ -20,16 +20,9 @@ package com.elevenware.fakeid;
  * #L%
  */
 
+import com.elevenware.fakeid.core.TokenMinter;
 import com.elevenware.fakeid.core.error.UnsupportedGrantTypeException;
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.crypto.RSASSASigner;
-import com.nimbusds.jose.jwk.JWK;
-import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 import com.oidc4j.v2.lib.Provider;
 import com.oidc4j.v2.lib.ProviderConfiguration;
 import com.oidc4j.v2.lib.SigningKeySource;
@@ -57,11 +50,13 @@ public class FakeIdProvider {
 
     private final Configuration configuration;
     private final Provider provider;
+    private final TokenMinter tokenMinter;
     private final Map<String, String> noncesByCode = new ConcurrentHashMap<>();
 
     public FakeIdProvider(Configuration configuration) {
         this.configuration = configuration;
         this.provider = buildV2Provider(configuration);
+        this.tokenMinter = new TokenMinter(provider.getKeySource().getSigningKey(), configuration.getIssuer());
     }
 
     private static Provider buildV2Provider(Configuration configuration) {
@@ -263,29 +258,11 @@ public class FakeIdProvider {
     }
 
     private String idToken(String nonce, String clientId) {
-        JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder();
-        claimsBuilder.subject(configuration.getClaims().get("sub").toString());
-        for(Map.Entry<String, Object> claim: configuration.getClaims().entrySet()) {
-            claimsBuilder.claim(claim.getKey(), claim.getValue());
-        }
-        claimsBuilder.claim("nonce", nonce);
-        claimsBuilder.claim("iss", configuration.getIssuer());
-        claimsBuilder.audience(clientId);
-        Instant now = Instant.now();
-        claimsBuilder.issueTime(Date.from(now));
-        now = now.plus(1L, ChronoUnit.HOURS);
-        claimsBuilder.expirationTime(Date.from(now));
-        RSAKey signingKey = provider.getKeySource().getSigningKey();
-        JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.parse(signingKey.getAlgorithm().getName()))
-                .keyID(signingKey.getKeyID())
-                .build();
-        SignedJWT idToken = new SignedJWT(header, claimsBuilder.build());
-        try {
-            idToken.sign(new RSASSASigner(signingKey.toRSAPrivateKey()));
-            return idToken.serialize();
-        } catch (JOSEException e) {
-            throw new RuntimeException(e);
-        }
+        return tokenMinter.mintIdToken(
+                configuration.getClaims().get("sub").toString(),
+                clientId,
+                nonce,
+                configuration.getClaims());
     }
 
     public void jwksEndpoint(@NotNull Context context) {
