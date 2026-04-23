@@ -1,0 +1,147 @@
+package com.elevenware.fakeid.core;
+
+/*-
+ * #%L
+ * Fake ID
+ * %%
+ * Copyright (C) 2025 George McIntosh
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+
+import com.elevenware.fakeid.Configuration;
+import com.elevenware.fakeid.core.dto.TokenRequest;
+import com.elevenware.fakeid.core.dto.TokenResponse;
+import com.elevenware.fakeid.core.error.UnsupportedGrantTypeException;
+import com.oidc4j.v2.lib.Provider;
+import com.oidc4j.v2.lib.store.IssuedGrant;
+import com.oidc4j.v2.lib.store.PendingGrant;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+public class FakeIdCore {
+
+    private static final Logger LOG = LoggerFactory.getLogger(FakeIdCore.class);
+
+    private final Configuration configuration;
+    private final Provider provider;
+    private final TokenMinter tokenMinter;
+    private final Map<String, String> noncesByCode = new ConcurrentHashMap<>();
+
+    public FakeIdCore(Configuration configuration, Provider provider, TokenMinter tokenMinter) {
+        this.configuration = configuration;
+        this.provider = provider;
+        this.tokenMinter = tokenMinter;
+    }
+
+    public TokenResponse token(TokenRequest request) {
+        String grantType = request.grantType();
+        switch (grantType) {
+            case "authorization_code":
+                return authCodeGrant(request.code(), request.scope());
+            case "client_credentials":
+                return clientCredentialsGrant(request.clientId(), request.scope());
+            default:
+                throw new UnsupportedGrantTypeException(grantType);
+        }
+    }
+
+    public void recordAuthCodeNonce(String code, String nonce) {
+        noncesByCode.put(code, nonce);
+    }
+
+    private TokenResponse authCodeGrant(String authCode, String scope) {
+        PendingGrant pending = provider.getPendingGrantStore()
+                .consume(authCode)
+                .orElseThrow(() -> new IllegalStateException("Unknown authorization code: " + authCode));
+        String clientId = pending.getClientId();
+        String idToken = null;
+        Set<String> scopes = pending.getConsentedScopes();
+        if (scopes == null) {
+            scopes = Collections.emptySet();
+        }
+        if (scope == null) {
+            scope = String.join(" ", scopes);
+        }
+        if (scope.contains("openid")) {
+            idToken = tokenMinter.mintIdToken(
+                    configuration.getClaims().get("sub").toString(),
+                    clientId,
+                    noncesByCode.remove(authCode),
+                    configuration.getClaims());
+        } else {
+            noncesByCode.remove(authCode);
+        }
+        String accessToken = RandomStringUtils.randomAlphanumeric(32);
+        saveIssuedGrant(clientId, "authorization_code", scopes, accessToken);
+
+        LOG.info("Token issued using auth code grant for client {}", clientId);
+        return new TokenResponse(
+                accessToken,
+                "Bearer",
+                3600,
+                scope,
+                System.currentTimeMillis() / 1000L,
+                clientId,
+                "authorization_code",
+                idToken);
+    }
+
+    private TokenResponse clientCredentialsGrant(String clientId, String scope) {
+        String accessToken = RandomStringUtils.randomAlphanumeric(32);
+        Set<String> scopes = new HashSet<>();
+        if (scope != null) {
+            for (String s : scope.split(" ")) {
+                scopes.add(s);
+            }
+        } else {
+            scope = "";
+        }
+        saveIssuedGrant(clientId, "client_credentials", scopes, accessToken);
+
+        LOG.info("Token issued using client credentials grant for client {}", clientId);
+        return new TokenResponse(
+                accessToken,
+                "Bearer",
+                3600,
+                scope,
+                System.currentTimeMillis() / 1000L,
+                clientId,
+                "client_credentials",
+                null);
+    }
+
+    private void saveIssuedGrant(String clientId, String grantType, Set<String> scopes, String accessToken) {
+        Instant now = Instant.now();
+        provider.getIssuedGrantStore().save(new IssuedGrant(
+                UUID.randomUUID().toString(),
+                clientId,
+                grantType,
+                scopes,
+                accessToken,
+                null,
+                now,
+                now.plus(1L, ChronoUnit.HOURS)));
+    }
+}
