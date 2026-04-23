@@ -47,6 +47,76 @@ services:
 
 The DNS entry auth.localtest.me is externally resolvable to localhost, and we have told docker to allow the fakeid container to be reached via it internally as well.
 
+## Using Fake ID as a Java library
+
+Fake ID is published to Maven Central, so you can embed it directly in a Java project — useful in integration tests
+where spinning up a Docker container would be heavy.
+
+```xml
+<dependency>
+    <groupId>com.elevenware</groupId>
+    <artifactId>fakeid</artifactId>
+    <version>0.0.3</version>
+</dependency>
+```
+
+The simplest usage starts Fake ID on a fixed port with default claims and a freshly generated signing key:
+
+```java
+Configuration configuration = Configuration.builder()
+        .port(8091)
+        .build();
+
+FakeIdApplication app = new FakeIdApplication(configuration).start();
+
+// ... point your relying party at http://localhost:8091 ...
+
+app.stop();
+```
+
+For tests, bind to an ephemeral port with `randomPort()` (or `.port(0)`) and read the actual port back from the
+running application. Stop the application in a `finally` block so a failing test doesn't leak a running server:
+
+```java
+FakeIdApplication app = new FakeIdApplication(
+        Configuration.builder().randomPort().build()).start();
+try {
+    int port = app.port();
+    String issuer = "http://localhost:" + port;
+    // ... exercise your relying party against `issuer` ...
+} finally {
+    app.stop();
+}
+```
+
+You can supply your own signing key and override the claims returned in id tokens. Providing a key you persist
+and reuse across restarts keeps the JWKS stable — generating a fresh key on every startup (as shown below) will
+give a different JWKS each run, which matters if relying parties cache it:
+
+```java
+RSAKey jwk = new RSAKeyGenerator(2048)
+        .keyUse(KeyUse.SIGNATURE)
+        .keyID("signingKey")
+        .algorithm(Algorithm.parse("RS256"))
+        .generate();
+
+Configuration configuration = Configuration.builder()
+        .port(8091)
+        .jwks(new JWKSet(jwk))
+        .claims(Map.of(
+                "sub", "jeff@example.com",
+                "additionalClaims", Map.of("claim", "claimValue")))
+        .build();
+
+FakeIdApplication app = new FakeIdApplication(configuration).start();
+```
+
+The Java library and Docker image share the same underlying configuration model, but the builder does not map 1:1
+to every environment-variable format. For example, `FAKEID_CONFIG_LOCATION` is handled via
+`Configuration.loadFromFile(...)`, and `FAKEID_SIGNING_KEY` (a base64-encoded PEM) is parsed into a `JWKSet` rather
+than accepted directly by the builder. For environment-variable or file-based parity, use
+`Configuration.defaultConfiguration()` or `Configuration.loadFromFile(...)`.
+
 ## Configuration
 
 There are a few ways to configure Fake ID. The simplest way is to simply start the container, and allow it to provide sensible defaults.
