@@ -27,6 +27,27 @@ public record AuthorizeResponse(
         String idToken,
         String state) {
 
+    public String toRedirectLocation() {
+        StringBuilder sb = new StringBuilder().append(redirectUri);
+        char sep = '?';
+        if (code != null) {
+            sb.append(sep).append("code=").append(code);
+            sep = '&';
+        }
+        if (accessToken != null) {
+            sb.append(sep).append("token=").append(accessToken);
+            sep = '&';
+        }
+        if (idToken != null) {
+            sb.append(sep).append("id_token=").append(idToken);
+            sep = '&';
+        }
+        if (state != null) {
+            sb.append(sep).append("state=").append(state);
+        }
+        return sb.toString();
+    }
+
     @Override
     public String toString() {
         return "AuthorizeResponse[redirectUri=" + redirectUri

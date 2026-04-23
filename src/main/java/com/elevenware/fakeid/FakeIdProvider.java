@@ -22,6 +22,8 @@ package com.elevenware.fakeid;
 
 import com.elevenware.fakeid.core.FakeIdCore;
 import com.elevenware.fakeid.core.TokenMinter;
+import com.elevenware.fakeid.core.dto.AuthorizeRequest;
+import com.elevenware.fakeid.core.dto.AuthorizeResponse;
 import com.elevenware.fakeid.core.dto.TokenRequest;
 import com.elevenware.fakeid.core.dto.TokenResponse;
 import com.nimbusds.jose.jwk.RSAKey;
@@ -35,14 +37,11 @@ import com.oidc4j.v2.lib.store.InMemoryUserStore;
 import com.oidc4j.v2.lib.store.User;
 import com.oidc4j.v2.lib.store.UserStore;
 import io.javalin.http.Context;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 public class FakeIdProvider {
@@ -51,13 +50,12 @@ public class FakeIdProvider {
 
     private final Configuration configuration;
     private final Provider provider;
-    private final TokenMinter tokenMinter;
     private final FakeIdCore core;
 
     public FakeIdProvider(Configuration configuration) {
         this.configuration = configuration;
         this.provider = buildV2Provider(configuration);
-        this.tokenMinter = new TokenMinter(provider.getKeySource().getSigningKey(), configuration.getIssuer());
+        TokenMinter tokenMinter = new TokenMinter(provider.getKeySource().getSigningKey(), configuration.getIssuer());
         this.core = new FakeIdCore(configuration, provider, tokenMinter);
     }
 
@@ -183,86 +181,29 @@ public class FakeIdProvider {
 
     public void authorizationEndpoint(@NotNull Context context) {
         Map<String, List<String>> params = context.queryParamMap();
-        for(String required : List.of("client_id", "redirect_uri", "response_type", "scope")) {
-            if(!hasValidValue(params.get(required))) {
+        for (String required : List.of("client_id", "redirect_uri", "response_type", "scope")) {
+            if (!hasValidValue(params.get(required))) {
                 context.status(400).json(Map.of("error", "invalid_request", "error_description", "missing required parameter: " + required));
                 return;
             }
         }
-        AuthRequest authRequest = new AuthRequest();
-        authRequest.setClientId(params.get("client_id").get(0));
-        authRequest.setScopes(Set.copyOf(params.get("scope")));
-        authRequest.setRedirectUri(params.get("redirect_uri").get(0));
-        authRequest.setResponseType(params.get("response_type").get(0));
-        if(hasValidValue(params.get("state"))) {
-            authRequest.setState(params.get("state").get(0));
-        }
-        if(params.containsKey("nonce")) {
-            authRequest.setNonce(params.get("nonce").get(0));
-        }
-        LOG.info("Auth Request for client {} with scopes {}", authRequest.getClientId(), authRequest.getScopes());
-        StringBuilder responseBuilder = new StringBuilder()
-                .append(authRequest.getRedirectUri());
-        char separator = '?';
-        String authCode = RandomStringUtils.randomAlphanumeric(16);
-        String clientId = params.get("client_id").get(0);
-        String subject = configuration.getClaims().get("sub").toString();
-        String responseType = authRequest.getResponseType();
-        if(responseType.contains("code")) {
-            savePendingAuthCode(authCode, clientId, subject, authRequest.getScopes(),
-                    authRequest.getRedirectUri(), authRequest.getNonce());
-            responseBuilder.append(separator)
-                  .append("code=").append(authCode);
-            separator = '&';
-        }
-        if(responseType.contains("token")) {
-            String accessToken = RandomStringUtils.randomAlphanumeric(32);
-            saveIssuedGrant(clientId, "implicit", authRequest.getScopes(), accessToken);
-            responseBuilder.append(separator)
-                    .append("token=").append(accessToken);
-            separator = '&';
-        }
-        if (responseType.contains("id_token")) {
-            responseBuilder.append(separator)
-                    .append("id_token=").append(idToken(authRequest.getNonce(), clientId));
-            separator = '&';
-        }
-        if (authRequest.getState() != null) {
-            responseBuilder.append(separator)
-                    .append("state=").append(authRequest.getState());
-        }
+        AuthorizeRequest request = new AuthorizeRequest(
+                params.get("client_id").get(0),
+                params.get("redirect_uri").get(0),
+                params.get("response_type").get(0),
+                Set.copyOf(params.get("scope")),
+                hasValidValue(params.get("state")) ? params.get("state").get(0) : null,
+                params.containsKey("nonce") ? params.get("nonce").get(0) : null);
 
-        LOG.info("Authorization response: {}", responseBuilder.toString());
-        String redirect = responseBuilder.toString();
+        AuthorizeResponse response = core.authorize(request);
+        String redirect = response.toRedirectLocation();
+        LOG.info("Authorization response: {}", redirect);
         context.redirect(redirect);
     }
 
     public void savePendingAuthCode(String code, String clientId, String subject,
                                     Set<String> scopes, String redirectUri, String nonce) {
-        Instant now = Instant.now();
-        com.oidc4j.v2.lib.store.PendingGrant pending = new com.oidc4j.v2.lib.store.PendingGrant(
-                code,
-                clientId,
-                subject,
-                scopes == null ? Set.of() : scopes,
-                redirectUri,
-                null,
-                null,
-                now,
-                now.plus(10L, ChronoUnit.MINUTES));
-        pending.grant();
-        provider.getPendingGrantStore().save(pending);
-        if (nonce != null) {
-            core.recordAuthCodeNonce(code, nonce);
-        }
-    }
-
-    private String idToken(String nonce, String clientId) {
-        return tokenMinter.mintIdToken(
-                configuration.getClaims().get("sub").toString(),
-                clientId,
-                nonce,
-                configuration.getClaims());
+        core.savePendingAuthCode(code, clientId, subject, scopes, redirectUri, nonce);
     }
 
     public void jwksEndpoint(@NotNull Context context) {
@@ -286,19 +227,6 @@ public class FakeIdProvider {
         } else {
             context.json(Map.of("active", false));
         }
-    }
-
-    private void saveIssuedGrant(String clientId, String grantType, Set<String> scopes, String accessToken) {
-        Instant now = Instant.now();
-        provider.getIssuedGrantStore().save(new com.oidc4j.v2.lib.store.IssuedGrant(
-                UUID.randomUUID().toString(),
-                clientId,
-                grantType,
-                scopes,
-                accessToken,
-                null,
-                now,
-                now.plus(1L, ChronoUnit.HOURS)));
     }
 
     private boolean hasValidValue(List<String> values) {
