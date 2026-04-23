@@ -21,6 +21,8 @@ package com.elevenware.fakeid.core;
  */
 
 import com.elevenware.fakeid.Configuration;
+import com.elevenware.fakeid.core.dto.AuthorizeRequest;
+import com.elevenware.fakeid.core.dto.AuthorizeResponse;
 import com.elevenware.fakeid.core.dto.TokenRequest;
 import com.elevenware.fakeid.core.dto.TokenResponse;
 import com.elevenware.fakeid.core.error.UnsupportedGrantTypeException;
@@ -67,8 +69,61 @@ public class FakeIdCore {
         }
     }
 
-    public void recordAuthCodeNonce(String code, String nonce) {
-        noncesByCode.put(code, nonce);
+    public AuthorizeResponse authorize(AuthorizeRequest request) {
+        LOG.info("Auth Request for client {} with scopes {}", request.clientId(), request.scopes());
+        String subject = configuration.getClaims().get("sub").toString();
+        String responseType = request.responseType();
+        String code = null;
+        String accessToken = null;
+        String idToken = null;
+
+        if (responseType.contains("code")) {
+            code = RandomStringUtils.randomAlphanumeric(16);
+            savePendingAuthCode(
+                    code,
+                    request.clientId(),
+                    subject,
+                    request.scopes(),
+                    request.redirectUri(),
+                    request.nonce());
+        }
+        if (responseType.contains("token")) {
+            accessToken = RandomStringUtils.randomAlphanumeric(32);
+            saveIssuedGrant(request.clientId(), "implicit", request.scopes(), accessToken);
+        }
+        if (responseType.contains("id_token")) {
+            idToken = tokenMinter.mintIdToken(
+                    subject,
+                    request.clientId(),
+                    request.nonce(),
+                    configuration.getClaims());
+        }
+        return new AuthorizeResponse(
+                request.redirectUri(),
+                code,
+                accessToken,
+                idToken,
+                request.state());
+    }
+
+    public void savePendingAuthCode(String code, String clientId, String subject,
+                                    Set<String> scopes, String redirectUri, String nonce) {
+        Instant now = Instant.now();
+        PendingGrant pending = new PendingGrant(
+                code,
+                clientId,
+                subject,
+                scopes == null ? Set.of() : scopes,
+                redirectUri,
+                null,
+                null,
+                now,
+                now.plus(10L, ChronoUnit.MINUTES));
+        pending.grant();
+        provider.getPendingGrantStore().save(pending);
+        if (nonce != null) {
+            noncesByCode.put(code, nonce);
+        }
     }
 
     private TokenResponse authCodeGrant(String authCode, String scope) {
