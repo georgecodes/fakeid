@@ -29,4 +29,18 @@ public record TokenResponse(
         String clientId,
         String grantType,
         String idToken) {
+
+    @Override
+    public String toString() {
+        return "TokenResponse[" +
+                "accessToken=" + (accessToken == null ? null : "[REDACTED]") +
+                ", tokenType=" + tokenType +
+                ", expiresIn=" + expiresIn +
+                ", scope=" + scope +
+                ", issuedAt=" + issuedAt +
+                ", clientId=" + clientId +
+                ", grantType=" + grantType +
+                ", idToken=" + (idToken == null ? null : "[REDACTED]") +
+                "]";
+    }
 }
