@@ -45,10 +45,10 @@ public final class TokenMinter {
 
     public String mintIdToken(String subject, String audience, String nonce, Map<String, Object> claims) {
         JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder();
-        claimsBuilder.subject(subject);
         for (Map.Entry<String, Object> claim : claims.entrySet()) {
             claimsBuilder.claim(claim.getKey(), claim.getValue());
         }
+        claimsBuilder.subject(subject);
         claimsBuilder.claim("nonce", nonce);
         claimsBuilder.claim("iss", issuer);
         claimsBuilder.audience(audience);
