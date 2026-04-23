@@ -20,6 +20,7 @@ package com.elevenware.fakeid;
  * #L%
  */
 
+import com.elevenware.fakeid.core.dto.TokenResponse;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.crypto.RSASSAVerifier;
@@ -36,7 +37,6 @@ import org.mockito.Mockito;
 
 import java.text.ParseException;
 import java.util.Date;
-import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -61,10 +61,9 @@ public class IdTokenSigningTests {
         when(context.formParam("code")).thenReturn(code);
 
         fakeIdProvider.tokenEndpoint(context);
-        ArgumentCaptor<Map> contextCaptor = ArgumentCaptor.forClass(Map.class);
+        ArgumentCaptor<TokenResponse> contextCaptor = ArgumentCaptor.forClass(TokenResponse.class);
         verify(context).json(contextCaptor.capture());
-        Map<String, String> response = (Map<String, String>) contextCaptor.getValue();
-        String idToken = response.get("id_token");
+        String idToken = contextCaptor.getValue().idToken();
 
         SignedJWT jwt = SignedJWT.parse(idToken);
         JWSAlgorithm algorithm = jwt.getHeader().getAlgorithm();
@@ -96,10 +95,9 @@ public class IdTokenSigningTests {
         when(context.formParam("code")).thenReturn(code);
 
         fakeIdProvider.tokenEndpoint(context);
-        ArgumentCaptor<Map> contextCaptor = ArgumentCaptor.forClass(Map.class);
+        ArgumentCaptor<TokenResponse> contextCaptor = ArgumentCaptor.forClass(TokenResponse.class);
         verify(context).json(contextCaptor.capture());
-        Map<String, String> response = (Map<String, String>) contextCaptor.getValue();
-        String idToken = response.get("id_token");
+        String idToken = contextCaptor.getValue().idToken();
 
         SignedJWT jwt = SignedJWT.parse(idToken);
         JWSAlgorithm algorithm = jwt.getHeader().getAlgorithm();
@@ -129,10 +127,9 @@ public class IdTokenSigningTests {
         when(context.formParam("code")).thenReturn(code);
 
         fakeIdProvider.tokenEndpoint(context);
-        ArgumentCaptor<Map> contextCaptor = ArgumentCaptor.forClass(Map.class);
+        ArgumentCaptor<TokenResponse> contextCaptor = ArgumentCaptor.forClass(TokenResponse.class);
         verify(context).json(contextCaptor.capture());
-        Map<String, String> response = (Map<String, String>) contextCaptor.getValue();
-        String idToken = response.get("id_token");
+        String idToken = contextCaptor.getValue().idToken();
 
         SignedJWT jwt = SignedJWT.parse(idToken);
         JWSAlgorithm algorithm = jwt.getHeader().getAlgorithm();

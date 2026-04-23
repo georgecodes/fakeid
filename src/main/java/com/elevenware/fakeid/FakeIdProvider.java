@@ -20,8 +20,10 @@ package com.elevenware.fakeid;
  * #L%
  */
 
+import com.elevenware.fakeid.core.FakeIdCore;
 import com.elevenware.fakeid.core.TokenMinter;
-import com.elevenware.fakeid.core.error.UnsupportedGrantTypeException;
+import com.elevenware.fakeid.core.dto.TokenRequest;
+import com.elevenware.fakeid.core.dto.TokenResponse;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.oidc4j.v2.lib.Provider;
 import com.oidc4j.v2.lib.ProviderConfiguration;
@@ -42,7 +44,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class FakeIdProvider {
 
@@ -51,12 +52,13 @@ public class FakeIdProvider {
     private final Configuration configuration;
     private final Provider provider;
     private final TokenMinter tokenMinter;
-    private final Map<String, String> noncesByCode = new ConcurrentHashMap<>();
+    private final FakeIdCore core;
 
     public FakeIdProvider(Configuration configuration) {
         this.configuration = configuration;
         this.provider = buildV2Provider(configuration);
         this.tokenMinter = new TokenMinter(provider.getKeySource().getSigningKey(), configuration.getIssuer());
+        this.core = new FakeIdCore(configuration, provider, tokenMinter);
     }
 
     private static Provider buildV2Provider(Configuration configuration) {
@@ -124,29 +126,27 @@ public class FakeIdProvider {
         LOG.info("Token endpoint request parameters: {}", params);
         LOG.info("Grant type: {}", grantTypeName);
 
-        if(grantTypeName == null) {
+        if (grantTypeName == null) {
             context.status(400).json(Map.of("error", "invalid_request", "error_description", "missing required parameter: grant_type"));
             return;
         }
 
         ClientCredentials credentials = extractClientCredentials(context);
 
-        switch (grantTypeName) {
-            case "authorization_code":
-                context.json(authCodeGrant(authCode, scope));
-                break;
-            case "client_credentials":
-                if(credentials == null) {
-                    context.status(401).json(Map.of("error", "invalid_client", "error_description", "client credentials are required"));
-                    return;
-                }
-                Map<String, Object> response = clientCredentialsGrant(credentials.clientId, scope);
-                context.json(response);
-                break;
-            default:
-                throw new UnsupportedGrantTypeException(grantTypeName);
+        if ("client_credentials".equals(grantTypeName) && credentials == null) {
+            context.status(401).json(Map.of("error", "invalid_client", "error_description", "client credentials are required"));
+            return;
         }
 
+        TokenRequest tokenRequest = new TokenRequest(
+                grantTypeName,
+                authCode,
+                scope,
+                credentials == null ? null : credentials.clientId,
+                credentials == null ? null : credentials.clientSecret);
+
+        TokenResponse response = core.token(tokenRequest);
+        context.json(response);
     }
 
     private ClientCredentials extractClientCredentials(Context context) {
@@ -253,7 +253,7 @@ public class FakeIdProvider {
         pending.grant();
         provider.getPendingGrantStore().save(pending);
         if (nonce != null) {
-            noncesByCode.put(code, nonce);
+            core.recordAuthCodeNonce(code, nonce);
         }
     }
 
@@ -286,66 +286,6 @@ public class FakeIdProvider {
         } else {
             context.json(Map.of("active", false));
         }
-    }
-
-    private Map<String, Object> authCodeGrant(String authCode, String scope) {
-        com.oidc4j.v2.lib.store.PendingGrant pending = provider.getPendingGrantStore()
-                .consume(authCode)
-                .orElseThrow(() -> new IllegalStateException("Unknown authorization code: " + authCode));
-        String clientId = pending.getClientId();
-        String idToken = null;
-        Set<String> scopes = pending.getConsentedScopes();
-        if(scopes == null) {
-            scopes = Collections.emptySet();
-        }
-        if(scope == null) {
-            scope = String.join(" ", scopes);
-        }
-        if(scope.contains("openid")) {
-            idToken = idToken(noncesByCode.remove(authCode), clientId);
-        } else {
-            noncesByCode.remove(authCode);
-        }
-        String accessToken = RandomStringUtils.randomAlphanumeric(32);
-        saveIssuedGrant(clientId, "authorization_code", scopes, accessToken);
-
-        LOG.info("Token issued using auth code grant for client {}", clientId);
-        Map<String,Object> res = new HashMap<>();
-        res.put("access_token", accessToken);
-        res.put("token_type", "Bearer");
-        res.put("expires_in", 3600);
-        res.put("scope", scope);
-        res.put("issued_at", System.currentTimeMillis() / 1000L);
-        res.put("client_id", clientId);
-        res.put("grant_type", "authorization_code");
-        if(idToken != null) {
-            res.put("id_token", idToken);
-        }
-        return res;
-    }
-
-    private Map<String, Object> clientCredentialsGrant(String clientId, String scope) {
-        String accessToken = RandomStringUtils.randomAlphanumeric(32);
-        Set<String> scopes = new HashSet<>();
-        if(scope != null){
-            for(String s: scope.split(" ")) {
-                scopes.add(s);
-            }
-        } else {
-            scope = "";
-        }
-        saveIssuedGrant(clientId, "client_credentials", scopes, accessToken);
-
-        LOG.info("Token issued using client credentials grant for client {}", clientId);
-        Map<String,Object> res = new HashMap<>();
-        res.put("access_token", accessToken);
-        res.put("token_type", "Bearer");
-        res.put("expires_in", 3600);
-        res.put("scope", scope);
-        res.put("issued_at", System.currentTimeMillis() / 1000L);
-        res.put("client_id", clientId);
-        res.put("grant_type", "client_credentials");
-        return res;
     }
 
     private void saveIssuedGrant(String clientId, String grantType, Set<String> scopes, String accessToken) {
