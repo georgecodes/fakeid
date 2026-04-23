@@ -1,0 +1,17 @@
+baseURL = "https://fakeid.georgemcintosh.com/"
+languageCode = "en-us"
+title = "Fake ID"
+
+uglyURLs = true
+enableRobotsTXT = true
+
+disableKinds = ["taxonomy", "term", "rss"]
+
+[params]
+  githubUrl = "https://github.com/georgecodes/fakeid"
+
+[markup.goldmark.renderer]
+  unsafe = true
+
+[markup.highlight]
+  codeFences = false

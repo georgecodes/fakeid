@@ -3,7 +3,7 @@
 
     <groupId>com.elevenware</groupId>
     <artifactId>fakeid</artifactId>
-    <version>0.0.3</version>
+    <version>0.0.4-SNAPSHOT</version>
 
     <properties>
         <main.class>com.elevenware.fakeid.FakeIdApplication</main.class>
@@ -44,7 +44,7 @@
         <dependency>
             <groupId>com.elevenware.oidc4j</groupId>
             <artifactId>lib-oidc4j</artifactId>
-            <version>0.0.5-SNAPSHOT</version>
+            <version>0.1.0</version>
             <exclusions>
                 <exclusion>
                     <groupId>ch.qos.logback</groupId>
