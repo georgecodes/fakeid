@@ -21,4 +21,8 @@ package com.elevenware.fakeid.core.dto;
  */
 
 public record IntrospectRequest(String token) {
+    @Override
+    public String toString() {
+        return "IntrospectRequest[token=[REDACTED]]";
+    }
 }
