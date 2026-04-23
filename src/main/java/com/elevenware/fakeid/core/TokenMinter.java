@@ -63,7 +63,7 @@ public final class TokenMinter {
             idToken.sign(new RSASSASigner(signingKey.toRSAPrivateKey()));
             return idToken.serialize();
         } catch (JOSEException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException("Failed to sign id_token", e);
         }
     }
 }
