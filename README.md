@@ -49,24 +49,49 @@ The DNS entry auth.localtest.me is externally resolvable to localhost, and we ha
 
 ## Using Fake ID as a Java library
 
-Fake ID is published to Maven Central, so you can embed it directly in a Java project — useful in integration tests
-where spinning up a Docker container would be heavy.
+Fake ID is published to Maven Central in two flavours. Pick based on whether you need a running HTTP endpoint
+or just the provider logic.
+
+### `fakeid-core` — Javalin-free, in-process
+
+No HTTP server, no ports bound, no Javalin on your classpath. Use it when you want to mint id_tokens or run
+auth-code round trips entirely in the JVM — typically in unit tests of code that verifies tokens.
+
+```xml
+<dependency>
+    <groupId>com.elevenware</groupId>
+    <artifactId>fakeid-core</artifactId>
+    <version>0.1.0</version>
+</dependency>
+```
+
+```java
+FakeIdCore core = new FakeIdCore(Configuration.builder().build());
+
+AuthorizeResponse auth = core.authorize(new AuthorizeRequest(
+        "my-client", "https://app/cb", "code",
+        Set.of("openid"), null, "nonce-abc"));
+
+TokenResponse tokens = core.token(new TokenRequest(
+        "authorization_code", auth.code(), null, "my-client", "ignored"));
+// tokens.idToken() is a signed JWT you can assert on.
+```
+
+### `fakeid` — full OIDC server
+
+The original library form. Includes Javalin and the HTTP adapter. Use it when a relying party needs to hit
+an OIDC endpoint over the network — integration tests that exercise the real HTTP flow your app uses in production.
 
 ```xml
 <dependency>
     <groupId>com.elevenware</groupId>
     <artifactId>fakeid</artifactId>
-    <version>0.0.3</version>
+    <version>0.1.0</version>
 </dependency>
 ```
 
-The simplest usage starts Fake ID on a fixed port with default claims and a freshly generated signing key:
-
 ```java
-Configuration configuration = Configuration.builder()
-        .port(8091)
-        .build();
-
+Configuration configuration = Configuration.builder().port(8091).build();
 FakeIdApplication app = new FakeIdApplication(configuration).start();
 
 // ... point your relying party at http://localhost:8091 ...
@@ -74,8 +99,8 @@ FakeIdApplication app = new FakeIdApplication(configuration).start();
 app.stop();
 ```
 
-For tests, bind to an ephemeral port with `randomPort()` (or `.port(0)`) and read the actual port back from the
-running application. Stop the application in a `finally` block so a failing test doesn't leak a running server:
+For tests, bind to an ephemeral port with `randomPort()` and stop the app in a `finally` block so a failing
+assertion doesn't leak a running server:
 
 ```java
 FakeIdApplication app = new FakeIdApplication(
@@ -89,33 +114,13 @@ try {
 }
 ```
 
-You can supply your own signing key and override the claims returned in id tokens. Providing a key you persist
-and reuse across restarts keeps the JWKS stable — generating a fresh key on every startup (as shown below) will
-give a different JWKS each run, which matters if relying parties cache it:
+### Configuration parity with the Docker image
 
-```java
-RSAKey jwk = new RSAKeyGenerator(2048)
-        .keyUse(KeyUse.SIGNATURE)
-        .keyID("signingKey")
-        .algorithm(Algorithm.parse("RS256"))
-        .generate();
-
-Configuration configuration = Configuration.builder()
-        .port(8091)
-        .jwks(new JWKSet(jwk))
-        .claims(Map.of(
-                "sub", "jeff@example.com",
-                "additionalClaims", Map.of("claim", "claimValue")))
-        .build();
-
-FakeIdApplication app = new FakeIdApplication(configuration).start();
-```
-
-The Java library and Docker image share the same underlying configuration model, but the builder does not map 1:1
-to every environment-variable format. For example, `FAKEID_CONFIG_LOCATION` is handled via
-`Configuration.loadFromFile(...)`, and `FAKEID_SIGNING_KEY` (a base64-encoded PEM) is parsed into a `JWKSet` rather
-than accepted directly by the builder. For environment-variable or file-based parity, use
-`Configuration.defaultConfiguration()` or `Configuration.loadFromFile(...)`.
+Both flavours share the same `Configuration` API, but the builder doesn't map 1:1 to every environment-variable
+format. For example, `FAKEID_CONFIG_LOCATION` is handled via `Configuration.loadFromFile(...)`, and
+`FAKEID_SIGNING_KEY` (a base64-encoded PEM) is parsed into a `JWKSet` rather than accepted directly by the
+builder. For environment-variable or file-based parity, use `Configuration.defaultConfiguration()` or
+`Configuration.loadFromFile(...)`.
 
 ## Configuration
 
