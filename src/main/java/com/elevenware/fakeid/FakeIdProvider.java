@@ -32,7 +32,6 @@ import com.nimbusds.jwt.SignedJWT;
 import com.oidc4j.v2.lib.Provider;
 import com.oidc4j.v2.lib.ProviderConfiguration;
 import com.oidc4j.v2.lib.SigningKeySource;
-import com.oidc4j.v2.lib.store.Client;
 import com.oidc4j.v2.lib.store.ClientStore;
 import com.oidc4j.v2.lib.store.InMemoryIssuedGrantStore;
 import com.oidc4j.v2.lib.store.InMemoryPendingGrantStore;
@@ -109,20 +108,6 @@ public class FakeIdProvider {
 
     private static String str(Object v) {
         return v == null ? null : v.toString();
-    }
-
-    private static final class AutoAcceptClientStore implements ClientStore {
-        private final Map<String, Client> clients = new ConcurrentHashMap<>();
-
-        @Override
-        public Optional<Client> findById(String id) {
-            return Optional.of(clients.computeIfAbsent(id, cid -> new Client(cid, "")));
-        }
-
-        @Override
-        public void save(Client client) {
-            clients.put(client.getId(), client);
-        }
     }
 
     public void getDiscoveryDocument(@NotNull Context context) {
