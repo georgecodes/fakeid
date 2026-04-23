@@ -3,8 +3,13 @@ name: Publish Docker image
 on:
   push:
     paths:
-      - 'src/main/**'
+      - 'fakeid-core/src/main/**'
+      - 'fakeid-server/src/main/**'
       - 'pom.xml'
+      - 'fakeid-core/pom.xml'
+      - 'fakeid-server/pom.xml'
+      - 'fakeid-meta/pom.xml'
+      - 'Dockerfile'
     branches:
       - "main"
 
@@ -33,7 +38,7 @@ jobs:
         uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
         with:
           images: georgemc/fakeid
-          tags: v0.0.4
+          tags: v0.1.0
 
       - name: Build and push Docker image
         id: push

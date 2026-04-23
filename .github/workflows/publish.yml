@@ -3,8 +3,12 @@ name: Build and publish everything on merge
 on:
   push:
     paths:
-      - 'src/main/**'
+      - 'fakeid-core/src/main/**'
+      - 'fakeid-server/src/main/**'
       - 'pom.xml'
+      - 'fakeid-core/pom.xml'
+      - 'fakeid-server/pom.xml'
+      - 'fakeid-meta/pom.xml'
     branches:
       - "main"
 

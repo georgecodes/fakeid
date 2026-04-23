@@ -8,7 +8,7 @@ RUN --mount=type=cache,target=/root/.m2 ./mvnw -f $HOME/pom.xml clean package as
 FROM eclipse-temurin:17.0.13_11-jdk-ubi9-minimal
 #FROM gcr.io/distroless/java17-debian12
 
-ARG JAR_FILE=/app/target/fakeid-all.jar
+ARG JAR_FILE=/app/fakeid-server/target/fakeid-all.jar
 COPY --from=builder ${JAR_FILE} fakeid.jar
 
 EXPOSE 8091

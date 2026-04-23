@@ -1,4 +1,5 @@
 target
+fakeid-*/LICENCE
 docs/public/**
 docs/public
 docs/.hugo_build.lock
