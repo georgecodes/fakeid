@@ -49,7 +49,9 @@ public final class TokenMinter {
             claimsBuilder.claim(claim.getKey(), claim.getValue());
         }
         claimsBuilder.subject(subject);
-        claimsBuilder.claim("nonce", nonce);
+        if (nonce != null) {
+            claimsBuilder.claim("nonce", nonce);
+        }
         claimsBuilder.claim("iss", issuer);
         claimsBuilder.audience(audience);
         Instant now = Instant.now();
