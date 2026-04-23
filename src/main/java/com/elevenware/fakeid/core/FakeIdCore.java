@@ -20,15 +20,28 @@ package com.elevenware.fakeid.core;
  * #L%
  */
 
+import com.elevenware.fakeid.AutoAcceptClientStore;
 import com.elevenware.fakeid.Configuration;
 import com.elevenware.fakeid.core.dto.AuthorizeRequest;
 import com.elevenware.fakeid.core.dto.AuthorizeResponse;
+import com.elevenware.fakeid.core.dto.IntrospectRequest;
+import com.elevenware.fakeid.core.dto.IntrospectResponse;
 import com.elevenware.fakeid.core.dto.TokenRequest;
 import com.elevenware.fakeid.core.dto.TokenResponse;
 import com.elevenware.fakeid.core.error.UnsupportedGrantTypeException;
+import com.nimbusds.jose.jwk.RSAKey;
 import com.oidc4j.v2.lib.Provider;
+import com.oidc4j.v2.lib.ProviderConfiguration;
+import com.oidc4j.v2.lib.SigningKeySource;
+import com.oidc4j.v2.lib.model.DiscoveryDocument;
+import com.oidc4j.v2.lib.store.ClientStore;
+import com.oidc4j.v2.lib.store.InMemoryIssuedGrantStore;
+import com.oidc4j.v2.lib.store.InMemoryPendingGrantStore;
+import com.oidc4j.v2.lib.store.InMemoryUserStore;
 import com.oidc4j.v2.lib.store.IssuedGrant;
 import com.oidc4j.v2.lib.store.PendingGrant;
+import com.oidc4j.v2.lib.store.User;
+import com.oidc4j.v2.lib.store.UserStore;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +51,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -51,10 +65,10 @@ public class FakeIdCore {
     private final TokenMinter tokenMinter;
     private final Map<String, String> noncesByCode = new ConcurrentHashMap<>();
 
-    public FakeIdCore(Configuration configuration, Provider provider, TokenMinter tokenMinter) {
+    public FakeIdCore(Configuration configuration) {
         this.configuration = configuration;
-        this.provider = provider;
-        this.tokenMinter = tokenMinter;
+        this.provider = buildV2Provider(configuration);
+        this.tokenMinter = new TokenMinter(provider.getKeySource().getSigningKey(), configuration.getIssuer());
     }
 
     public TokenResponse token(TokenRequest request) {
@@ -104,6 +118,33 @@ public class FakeIdCore {
                 accessToken,
                 idToken,
                 request.state());
+    }
+
+    public DiscoveryDocument discovery() {
+        return provider.discoveryDocument();
+    }
+
+    public Map<String, Object> jwks() {
+        return provider.getKeySource().getPublicJwks().toJSONObject();
+    }
+
+    public Map<String, Object> userInfo() {
+        return configuration.getClaims();
+    }
+
+    public IntrospectResponse introspect(IntrospectRequest request) {
+        Optional<IssuedGrant> found = provider.getIssuedGrantStore().findByAccessToken(request.token());
+        if (found.isPresent()) {
+            IssuedGrant grant = found.get();
+            return new IntrospectResponse(
+                    true,
+                    grant.getClientId(),
+                    configuration.getClaims().get("sub").toString(),
+                    String.join(" ", grant.getGrantedScopes()),
+                    grant.getExpiresAt().getEpochSecond(),
+                    grant.getIssuedAt().getEpochSecond());
+        }
+        return new IntrospectResponse(false, null, null, null, null, null);
     }
 
     public void savePendingAuthCode(String code, String clientId, String subject,
@@ -198,5 +239,52 @@ public class FakeIdCore {
                 null,
                 now,
                 now.plus(1L, ChronoUnit.HOURS)));
+    }
+
+    private static Provider buildV2Provider(Configuration configuration) {
+        ProviderConfiguration providerConfig = ProviderConfiguration.builder()
+                .issuer(configuration.getIssuer())
+                .grantType("authorization_code")
+                .grantType("client_credentials")
+                .grantType("refresh_token")
+                .clientAuthMethod("client_secret_basic")
+                .clientAuthMethod("client_secret_post")
+                .scope("openid")
+                .scope("profile")
+                .scope("email")
+                .build();
+
+        RSAKey signingKey = (RSAKey) configuration.getJwks().getKeyByKeyId("signingKey");
+        SigningKeySource keySource = new SigningKeySource(signingKey);
+
+        ClientStore clientStore = new AutoAcceptClientStore();
+        UserStore userStore = new InMemoryUserStore();
+        Object subject = configuration.getClaims().get("sub");
+        if (subject != null) {
+            userStore.save(userFromClaims(subject.toString(), configuration.getClaims()));
+        }
+
+        return new Provider(
+                providerConfig,
+                clientStore,
+                new InMemoryPendingGrantStore(),
+                new InMemoryIssuedGrantStore(),
+                userStore,
+                keySource);
+    }
+
+    private static User userFromClaims(String subject, Map<String, Object> claims) {
+        return new User(
+                subject,
+                str(claims.get("name")),
+                str(claims.get("preferred_username")),
+                str(claims.get("given_name")),
+                str(claims.get("family_name")),
+                str(claims.get("email")),
+                Boolean.TRUE.equals(claims.get("email_verified")));
+    }
+
+    private static String str(Object v) {
+        return v == null ? null : v.toString();
     }
 }

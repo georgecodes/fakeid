@@ -9,9 +9,9 @@ package com.elevenware.fakeid;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,97 +21,43 @@ package com.elevenware.fakeid;
  */
 
 import com.elevenware.fakeid.core.FakeIdCore;
-import com.elevenware.fakeid.core.TokenMinter;
 import com.elevenware.fakeid.core.dto.AuthorizeRequest;
 import com.elevenware.fakeid.core.dto.AuthorizeResponse;
+import com.elevenware.fakeid.core.dto.IntrospectRequest;
+import com.elevenware.fakeid.core.dto.IntrospectResponse;
 import com.elevenware.fakeid.core.dto.TokenRequest;
 import com.elevenware.fakeid.core.dto.TokenResponse;
-import com.nimbusds.jose.jwk.RSAKey;
-import com.oidc4j.v2.lib.Provider;
-import com.oidc4j.v2.lib.ProviderConfiguration;
-import com.oidc4j.v2.lib.SigningKeySource;
-import com.oidc4j.v2.lib.store.ClientStore;
-import com.oidc4j.v2.lib.store.InMemoryIssuedGrantStore;
-import com.oidc4j.v2.lib.store.InMemoryPendingGrantStore;
-import com.oidc4j.v2.lib.store.InMemoryUserStore;
-import com.oidc4j.v2.lib.store.User;
-import com.oidc4j.v2.lib.store.UserStore;
 import io.javalin.http.Context;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.Base64;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class FakeIdProvider {
 
     private static final Logger LOG = LoggerFactory.getLogger(FakeIdProvider.class);
 
-    private final Configuration configuration;
-    private final Provider provider;
     private final FakeIdCore core;
 
     public FakeIdProvider(Configuration configuration) {
-        this.configuration = configuration;
-        this.provider = buildV2Provider(configuration);
-        TokenMinter tokenMinter = new TokenMinter(provider.getKeySource().getSigningKey(), configuration.getIssuer());
-        this.core = new FakeIdCore(configuration, provider, tokenMinter);
-    }
-
-    private static Provider buildV2Provider(Configuration configuration) {
-        ProviderConfiguration providerConfig = ProviderConfiguration.builder()
-                .issuer(configuration.getIssuer())
-                .grantType("authorization_code")
-                .grantType("client_credentials")
-                .grantType("refresh_token")
-                .clientAuthMethod("client_secret_basic")
-                .clientAuthMethod("client_secret_post")
-                .scope("openid")
-                .scope("profile")
-                .scope("email")
-                .build();
-
-        RSAKey signingKey = (RSAKey) configuration.getJwks().getKeyByKeyId("signingKey");
-        SigningKeySource keySource = new SigningKeySource(signingKey);
-
-        ClientStore clientStore = new AutoAcceptClientStore();
-        UserStore userStore = new InMemoryUserStore();
-        Object subject = configuration.getClaims().get("sub");
-        if (subject != null) {
-            userStore.save(userFromClaims(subject.toString(), configuration.getClaims()));
-        }
-
-        return new Provider(
-                providerConfig,
-                clientStore,
-                new InMemoryPendingGrantStore(),
-                new InMemoryIssuedGrantStore(),
-                userStore,
-                keySource);
-    }
-
-    private static User userFromClaims(String subject, Map<String, Object> claims) {
-        return new User(
-                subject,
-                str(claims.get("name")),
-                str(claims.get("preferred_username")),
-                str(claims.get("given_name")),
-                str(claims.get("family_name")),
-                str(claims.get("email")),
-                Boolean.TRUE.equals(claims.get("email_verified")));
-    }
-
-    private static String str(Object v) {
-        return v == null ? null : v.toString();
+        this.core = new FakeIdCore(configuration);
     }
 
     public void getDiscoveryDocument(@NotNull Context context) {
-        context.json(provider.discoveryDocument());
+        context.json(core.discovery());
+    }
+
+    public void jwksEndpoint(@NotNull Context context) {
+        context.json(core.jwks());
     }
 
     public void userInfoEndpoint(@NotNull Context context) {
-        context.json(configuration.getClaims());
+        context.json(core.userInfo());
     }
 
     public void tokenEndpoint(@NotNull Context context) {
@@ -147,38 +93,6 @@ public class FakeIdProvider {
         context.json(response);
     }
 
-    private ClientCredentials extractClientCredentials(Context context) {
-        String authHeader = context.header("Authorization");
-        if(authHeader != null && authHeader.regionMatches(true, 0, "Basic ", 0, 6)) {
-            try {
-                String encoded = authHeader.substring(6).trim();
-                String decoded = new String(Base64.getDecoder().decode(encoded), StandardCharsets.ISO_8859_1);
-                int colonIdx = decoded.indexOf(':');
-                if(colonIdx > 0 && colonIdx < decoded.length() - 1) {
-                    return new ClientCredentials(decoded.substring(0, colonIdx), decoded.substring(colonIdx + 1));
-                }
-            } catch (IllegalArgumentException e) {
-                return null;
-            }
-            return null;
-        }
-        String clientId = context.formParam("client_id");
-        String clientSecret = context.formParam("client_secret");
-        if(clientId != null && !clientId.isEmpty() && clientSecret != null && !clientSecret.isEmpty()) {
-            return new ClientCredentials(clientId, clientSecret);
-        }
-        return null;
-    }
-
-    private static final class ClientCredentials {
-        final String clientId;
-        final String clientSecret;
-        ClientCredentials(String clientId, String clientSecret) {
-            this.clientId = clientId;
-            this.clientSecret = clientSecret;
-        }
-    }
-
     public void authorizationEndpoint(@NotNull Context context) {
         Map<String, List<String>> params = context.queryParamMap();
         for (String required : List.of("client_id", "redirect_uri", "response_type", "scope")) {
@@ -201,31 +115,47 @@ public class FakeIdProvider {
         context.redirect(redirect);
     }
 
+    public void introspectionEndpoint(@NotNull Context context) {
+        Map<String, List<String>> body = context.formParamMap();
+        String token = body.get("token").get(0);
+        IntrospectResponse response = core.introspect(new IntrospectRequest(token));
+        context.json(response);
+    }
+
     public void savePendingAuthCode(String code, String clientId, String subject,
                                     Set<String> scopes, String redirectUri, String nonce) {
         core.savePendingAuthCode(code, clientId, subject, scopes, redirectUri, nonce);
     }
 
-    public void jwksEndpoint(@NotNull Context context) {
-        context.json(provider.getKeySource().getPublicJwks().toJSONObject());
+    private ClientCredentials extractClientCredentials(Context context) {
+        String authHeader = context.header("Authorization");
+        if (authHeader != null && authHeader.regionMatches(true, 0, "Basic ", 0, 6)) {
+            try {
+                String encoded = authHeader.substring(6).trim();
+                String decoded = new String(Base64.getDecoder().decode(encoded), StandardCharsets.ISO_8859_1);
+                int colonIdx = decoded.indexOf(':');
+                if (colonIdx > 0 && colonIdx < decoded.length() - 1) {
+                    return new ClientCredentials(decoded.substring(0, colonIdx), decoded.substring(colonIdx + 1));
+                }
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+            return null;
+        }
+        String clientId = context.formParam("client_id");
+        String clientSecret = context.formParam("client_secret");
+        if (clientId != null && !clientId.isEmpty() && clientSecret != null && !clientSecret.isEmpty()) {
+            return new ClientCredentials(clientId, clientSecret);
+        }
+        return null;
     }
 
-    public void introspectionEndpoint(@NotNull Context context) {
-        Map<String, List<String>> body = context.formParamMap();
-        String token = body.get("token").get(0);
-        Optional<com.oidc4j.v2.lib.store.IssuedGrant> found = provider.getIssuedGrantStore().findByAccessToken(token);
-        if (found.isPresent()) {
-            com.oidc4j.v2.lib.store.IssuedGrant grant = found.get();
-            context.json(Map.of(
-                    "active", true,
-                    "client_id", grant.getClientId(),
-                    "sub", configuration.getClaims().get("sub").toString(),
-                    "scope", String.join(" ", grant.getGrantedScopes()),
-                    "exp", grant.getExpiresAt().getEpochSecond(),
-                    "iat", grant.getIssuedAt().getEpochSecond()
-            ));
-        } else {
-            context.json(Map.of("active", false));
+    private static final class ClientCredentials {
+        final String clientId;
+        final String clientSecret;
+        ClientCredentials(String clientId, String clientSecret) {
+            this.clientId = clientId;
+            this.clientSecret = clientSecret;
         }
     }
 
