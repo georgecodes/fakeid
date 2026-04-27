@@ -58,7 +58,7 @@ public class IdTokenSigningTests {
     }
 
     @Test
-    void rssSigningByDefault() throws ParseException {
+    void rsaSigningByDefault() throws ParseException {
 
         String code = "abc";
         String nonce = "123";

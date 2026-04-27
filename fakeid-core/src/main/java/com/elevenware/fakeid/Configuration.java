@@ -44,6 +44,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.Base64;
 import java.util.Date;
@@ -166,12 +167,12 @@ public class Configuration {
         String setSigningKey = System.getenv("FAKEID_SIGNING_KEY");
         if(setSigningKey != null) {
             try {
-                String pem = new String(Base64.getDecoder().decode(setSigningKey));
+                String pem = new String(Base64.getDecoder().decode(setSigningKey), StandardCharsets.UTF_8);
                 JWK jwk = loadJwkFromPem(pem, configuration.getSigningAlgorithm());
                 configuration.setJwks(new JWKSet(jwk));
                 return;
             } catch (JOSEException e) {
-                throw new RuntimeException(e);
+                throw new ConfigurationException("Failed to parse FAKEID_SIGNING_KEY: " + e.getMessage());
             }
         }
         try {
@@ -190,6 +191,12 @@ public class Configuration {
         validateKeyAlgorithmCompatibility(parsed, algorithm);
         if (parsed instanceof ECKey) {
             ECKey ecKey = (ECKey) parsed;
+            Curve expected = curveForEcAlgorithm(algorithm);
+            if (!expected.equals(ecKey.getCurve())) {
+                throw new ConfigurationException(
+                        "EC key curve " + ecKey.getCurve() + " does not match algorithm " + algorithm +
+                        " (expected curve " + expected + ")");
+            }
             return new ECKey.Builder(ecKey.getCurve(), ecKey.toECPublicKey())
                     .privateKey(ecKey.toECPrivateKey())
                     .algorithm(algorithm)

@@ -43,8 +43,30 @@ public final class TokenMinter {
     private final String issuer;
 
     public TokenMinter(JWK signingKey, String issuer) {
+        validateSigningKey(signingKey);
         this.signingKey = signingKey;
         this.issuer = issuer;
+    }
+
+    private static void validateSigningKey(JWK key) {
+        if (key.getAlgorithm() == null) {
+            throw new IllegalArgumentException(
+                    "Signing key must have an 'alg' parameter set; received a " +
+                    key.getKeyType() + " key with no algorithm");
+        }
+        JWSAlgorithm alg = JWSAlgorithm.parse(key.getAlgorithm().getName());
+        boolean ecKey = key instanceof ECKey;
+        boolean ecAlg = JWSAlgorithm.Family.EC.contains(alg);
+        if (ecKey && !ecAlg) {
+            throw new IllegalArgumentException(
+                    "EC key cannot be used with non-EC algorithm " + alg +
+                    "; use ES256, ES384 or ES512");
+        }
+        if (!ecKey && ecAlg) {
+            throw new IllegalArgumentException(
+                    "RSA key cannot be used with EC algorithm " + alg +
+                    "; use RS256, RS384, RS512, PS256, PS384 or PS512");
+        }
     }
 
     public String mintIdToken(String subject, String audience, String nonce, Map<String, Object> claims) {

@@ -267,6 +267,9 @@ public class FakeIdCore {
                 .build();
 
         JWK signingJwk = configuration.getJwks().getKeyByKeyId("signingKey");
+        if (signingJwk == null) {
+            throw new IllegalArgumentException("JWKS configuration must contain a signing key with kid 'signingKey'.");
+        }
         SigningKeySource keySource = signingKeySourceFor(signingJwk);
 
         ClientStore clientStore = new AutoAcceptClientStore();

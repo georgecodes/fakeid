@@ -109,7 +109,7 @@ openssl pkcs8 -topk8 -nocrypt -in ec-key.pem -out ec-key-pkcs8.pem
 base64 ec-key-pkcs8.pem
 ```
 
-Only the private key need be provided. Set `FAKEID_SIGNING_ALGORITHM` to the matching EC algorithm when providing an EC key.
+Only the private key needs to be provided. Set `FAKEID_SIGNING_ALGORITHM` to the matching EC algorithm when providing an EC key.
 
 You can also generate RSA keys online at:
 
