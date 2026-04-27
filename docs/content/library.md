@@ -62,7 +62,9 @@ TokenResponse tokens = core.token(new TokenRequest(
 // tokens.idToken() is a signed JWT you can parse and assert on.
 ```
 
-To verify the signature in a test, pass your own signing key in via `Configuration`:
+To verify the signature in a test, pass your own signing key in via `Configuration`. Both RSA and EC keys are supported:
+
+**RSA (RS256, RS384, RS512, PS256, PS384, PS512):**
 
 ```java
 RSAKey jwk = new RSAKeyGenerator(2048)
@@ -79,6 +81,34 @@ FakeIdCore core = new FakeIdCore(Configuration.builder()
 TokenResponse tokens = /* ... as above ... */;
 SignedJWT idToken = SignedJWT.parse(tokens.idToken());
 idToken.verify(new RSASSAVerifier(jwk));
+```
+
+**EC (ES256, ES384, ES512):**
+
+```java
+ECKey ecJwk = new ECKeyGenerator(Curve.P_256)
+        .keyUse(KeyUse.SIGNATURE)
+        .keyID("signingKey")
+        .algorithm(JWSAlgorithm.ES256)
+        .generate();
+
+FakeIdCore core = new FakeIdCore(Configuration.builder()
+        .jwks(new JWKSet(ecJwk))
+        .claims(Map.of("sub", "alice@example.com"))
+        .build());
+
+TokenResponse tokens = /* ... as above ... */;
+SignedJWT idToken = SignedJWT.parse(tokens.idToken());
+idToken.verify(new ECDSAVerifier(ecJwk));
+```
+
+Alternatively, let Fake ID generate an EC key automatically by specifying the algorithm:
+
+```java
+FakeIdCore core = new FakeIdCore(Configuration.builder()
+        .signingAlgorithm(JWSAlgorithm.ES256)
+        .claims(Map.of("sub", "alice@example.com"))
+        .build());
 ```
 
 ## `fakeid` &mdash; full OIDC server
@@ -153,7 +183,9 @@ try {
 Supply your own signing key and override the claims returned in id tokens. Providing a key you persist and
 reuse across startups keeps the JWKS stable &mdash; generating a fresh key on every start (as shown below)
 produces a different JWKS each run, which can cause signature-verification errors in relying parties that
-cache the JWKS:
+cache the JWKS.
+
+**RSA key:**
 
 ```java
 RSAKey jwk = new RSAKeyGenerator(2048)
@@ -168,6 +200,24 @@ Configuration configuration = Configuration.builder()
         .claims(Map.of(
                 "sub", "jeff@example.com",
                 "additionalClaims", Map.of("claim", "claimValue")))
+        .build();
+
+FakeIdApplication app = new FakeIdApplication(configuration).start();
+```
+
+**EC key (ES256/ES384/ES512):**
+
+```java
+ECKey ecJwk = new ECKeyGenerator(Curve.P_256)
+        .keyUse(KeyUse.SIGNATURE)
+        .keyID("signingKey")
+        .algorithm(JWSAlgorithm.ES256)
+        .generate();
+
+Configuration configuration = Configuration.builder()
+        .port(8091)
+        .jwks(new JWKSet(ecJwk))
+        .claims(Map.of("sub", "jeff@example.com"))
         .build();
 
 FakeIdApplication app = new FakeIdApplication(configuration).start();

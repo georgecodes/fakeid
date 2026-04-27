@@ -23,7 +23,11 @@ package com.elevenware.fakeid.core;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.JWSSigner;
+import com.nimbusds.jose.crypto.ECDSASigner;
 import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jose.jwk.ECKey;
+import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
@@ -35,10 +39,10 @@ import java.util.Map;
 
 public final class TokenMinter {
 
-    private final RSAKey signingKey;
+    private final JWK signingKey;
     private final String issuer;
 
-    public TokenMinter(RSAKey signingKey, String issuer) {
+    public TokenMinter(JWK signingKey, String issuer) {
         this.signingKey = signingKey;
         this.issuer = issuer;
     }
@@ -62,10 +66,20 @@ public final class TokenMinter {
                 .build();
         SignedJWT idToken = new SignedJWT(header, claimsBuilder.build());
         try {
-            idToken.sign(new RSASSASigner(signingKey.toRSAPrivateKey()));
+            idToken.sign(createSigner(signingKey));
             return idToken.serialize();
         } catch (JOSEException e) {
             throw new IllegalStateException("Failed to sign id_token", e);
         }
+    }
+
+    private static JWSSigner createSigner(JWK key) throws JOSEException {
+        if (key instanceof RSAKey) {
+            return new RSASSASigner(((RSAKey) key).toRSAPrivateKey());
+        }
+        if (key instanceof ECKey) {
+            return new ECDSASigner(((ECKey) key).toECPrivateKey());
+        }
+        throw new IllegalArgumentException("Unsupported key type: " + key.getKeyType());
     }
 }

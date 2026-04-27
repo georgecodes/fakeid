@@ -27,10 +27,13 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.nimbusds.jose.Algorithm;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.jwk.Curve;
+import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.KeyUse;
 import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
@@ -163,32 +166,68 @@ public class Configuration {
         String setSigningKey = System.getenv("FAKEID_SIGNING_KEY");
         if(setSigningKey != null) {
             try {
-                setSigningKey = new String(Base64.getDecoder().decode(setSigningKey));
-                RSAKey key = RSAKey.parseFromPEMEncodedObjects(setSigningKey).toRSAKey();
-                key = new RSAKey.Builder(key.toRSAPublicKey())
-                        .privateKey(key.toRSAPrivateKey())
-                        .algorithm(configuration.getSigningAlgorithm())
-                        .keyID("signingKey")
-                        .keyUse(KeyUse.SIGNATURE)
-                        .build();
-                configuration.setJwks(new JWKSet(key));
+                String pem = new String(Base64.getDecoder().decode(setSigningKey));
+                JWK jwk = loadJwkFromPem(pem, configuration.getSigningAlgorithm());
+                configuration.setJwks(new JWKSet(jwk));
                 return;
             } catch (JOSEException e) {
                 throw new RuntimeException(e);
             }
         }
         try {
-            RSAKey jwk = new RSAKeyGenerator(2048)
-                    .keyUse(KeyUse.SIGNATURE)
-                    .keyID("signingKey")
-                    .issueTime(new Date())
-                    .algorithm(configuration.getSigningAlgorithm())
-                    .generate();
-            JWKSet jwks = new JWKSet(jwk);
-            configuration.setJwks(jwks);
+            JWK jwk = generateSigningKey(configuration.getSigningAlgorithm());
+            configuration.setJwks(new JWKSet(jwk));
         } catch (JOSEException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static JWK loadJwkFromPem(String pem, JWSAlgorithm algorithm) throws JOSEException {
+        if (isEcAlgorithm(algorithm)) {
+            ECKey ecKey = ECKey.parseFromPEMEncodedObjects(pem).toECKey();
+            return new ECKey.Builder(ecKey.getCurve(), ecKey.toECPublicKey())
+                    .privateKey(ecKey.toECPrivateKey())
+                    .algorithm(algorithm)
+                    .keyID("signingKey")
+                    .keyUse(KeyUse.SIGNATURE)
+                    .build();
+        }
+        RSAKey rsaKey = RSAKey.parseFromPEMEncodedObjects(pem).toRSAKey();
+        return new RSAKey.Builder(rsaKey.toRSAPublicKey())
+                .privateKey(rsaKey.toRSAPrivateKey())
+                .algorithm(algorithm)
+                .keyID("signingKey")
+                .keyUse(KeyUse.SIGNATURE)
+                .build();
+    }
+
+    private static JWK generateSigningKey(JWSAlgorithm algorithm) throws JOSEException {
+        if (isEcAlgorithm(algorithm)) {
+            Curve curve = curveForEcAlgorithm(algorithm);
+            return new ECKeyGenerator(curve)
+                    .keyUse(KeyUse.SIGNATURE)
+                    .keyID("signingKey")
+                    .issueTime(new Date())
+                    .algorithm(algorithm)
+                    .generate();
+        }
+        return new RSAKeyGenerator(2048)
+                .keyUse(KeyUse.SIGNATURE)
+                .keyID("signingKey")
+                .issueTime(new Date())
+                .algorithm(algorithm)
+                .generate();
+    }
+
+    private static boolean isEcAlgorithm(JWSAlgorithm algorithm) {
+        return JWSAlgorithm.Family.EC.contains(algorithm);
+    }
+
+    private static Curve curveForEcAlgorithm(JWSAlgorithm algorithm) {
+        if (JWSAlgorithm.ES256.equals(algorithm)) return Curve.P_256;
+        if (JWSAlgorithm.ES384.equals(algorithm)) return Curve.P_384;
+        if (JWSAlgorithm.ES512.equals(algorithm)) return Curve.P_521;
+        throw new ConfigurationException("Unsupported EC algorithm: " + algorithm);
     }
 
     private static void setDefaultClaims(Configuration configuration) {

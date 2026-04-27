@@ -67,10 +67,10 @@ Configuration options are:
 | --- | --- |
 | `FAKEID_CONFIG_LOCATION` | Location of the JSON config file, should you choose to use one. |
 | `FAKEID_ISSUER` | The issuer used. It's the base URL for all operations, as well as the issuer claim in id tokens. |
-| `FAKEID_SIGNING_KEY` | A base64 encoded PEM-format RSA private key. Used for signing id tokens, and available on the JWKS URI. |
+| `FAKEID_SIGNING_KEY` | A base64 encoded PEM-format private key (RSA or EC). Used for signing id tokens, and available on the JWKS URI. |
 | `FAKEID_SAMPLE_CLAIMS` | A template for returned id tokens. Can be either a full JWT or base64 encoded JSON. |
 | `FAKEID_SAMPLE_JWT` | An alias for `FAKEID_SAMPLE_CLAIMS`. Either can be used for either format. |
-| `FAKEID_SIGNING_ALGORITHM` | The JWS algorithm for signing id tokens. RSA-based only: RS256, RS384, RS512, PS256, PS384, PS512. Defaults to RS256. |
+| `FAKEID_SIGNING_ALGORITHM` | The JWS algorithm for signing id tokens. RSA: RS256, RS384, RS512, PS256, PS384, PS512. EC: ES256, ES384, ES512. Defaults to RS256. |
 | `FAKEID_SIGNING_ALG` | Shorthand for `FAKEID_SIGNING_ALGORITHM`. |
 
 ### Defaults
@@ -83,14 +83,35 @@ Configuration options are:
 
 ### Signing keys with OpenSSL
 
+**RSA key (default):**
+
 ```sh
 openssl genrsa -out keypair.pem 2048
 base64 keypair.pem
 ```
 
-Only the private key need be provided.
+**EC key (for ES256/ES384/ES512):**
 
-You can also generate keys online at:
+```sh
+# ES256 uses P-256 curve
+openssl ecparam -name prime256v1 -genkey -noout -out ec-key.pem
+openssl pkcs8 -topk8 -nocrypt -in ec-key.pem -out ec-key-pkcs8.pem
+base64 ec-key-pkcs8.pem
+
+# ES384 uses P-384 curve
+openssl ecparam -name secp384r1 -genkey -noout -out ec-key.pem
+openssl pkcs8 -topk8 -nocrypt -in ec-key.pem -out ec-key-pkcs8.pem
+base64 ec-key-pkcs8.pem
+
+# ES512 uses P-521 curve
+openssl ecparam -name secp521r1 -genkey -noout -out ec-key.pem
+openssl pkcs8 -topk8 -nocrypt -in ec-key.pem -out ec-key-pkcs8.pem
+base64 ec-key-pkcs8.pem
+```
+
+Only the private key need be provided. Set `FAKEID_SIGNING_ALGORITHM` to the matching EC algorithm when providing an EC key.
+
+You can also generate RSA keys online at:
 
 - [cryptotools.net/rsagen](https://cryptotools.net/rsagen)
 - [emn178.github.io RSA Key Generator](https://emn178.github.io/online-tools/rsa/key-generator/)
