@@ -182,9 +182,14 @@ public class Configuration {
         }
     }
 
+    // 2048-bit RSA is the standard minimum for a dev/test OIDC mock
+    private static final int DEFAULT_RSA_KEY_SIZE = 2048;
+
     private static JWK loadJwkFromPem(String pem, JWSAlgorithm algorithm) throws JOSEException {
-        if (isEcAlgorithm(algorithm)) {
-            ECKey ecKey = ECKey.parseFromPEMEncodedObjects(pem).toECKey();
+        JWK parsed = parsePemToJwk(pem);
+        validateKeyAlgorithmCompatibility(parsed, algorithm);
+        if (parsed instanceof ECKey) {
+            ECKey ecKey = (ECKey) parsed;
             return new ECKey.Builder(ecKey.getCurve(), ecKey.toECPublicKey())
                     .privateKey(ecKey.toECPrivateKey())
                     .algorithm(algorithm)
@@ -192,13 +197,46 @@ public class Configuration {
                     .keyUse(KeyUse.SIGNATURE)
                     .build();
         }
-        RSAKey rsaKey = RSAKey.parseFromPEMEncodedObjects(pem).toRSAKey();
+        RSAKey rsaKey = (RSAKey) parsed;
         return new RSAKey.Builder(rsaKey.toRSAPublicKey())
                 .privateKey(rsaKey.toRSAPrivateKey())
                 .algorithm(algorithm)
                 .keyID("signingKey")
                 .keyUse(KeyUse.SIGNATURE)
                 .build();
+    }
+
+    // Detects key type from PEM header rather than relying on the algorithm hint,
+    // so a key/algorithm mismatch produces a clear diagnostic rather than a parse error.
+    private static JWK parsePemToJwk(String pem) throws JOSEException {
+        if (pem.contains("EC PRIVATE KEY") || pem.contains("EC PARAMETERS")) {
+            return ECKey.parseFromPEMEncodedObjects(pem);
+        }
+        if (pem.contains("RSA PRIVATE KEY")) {
+            return RSAKey.parseFromPEMEncodedObjects(pem);
+        }
+        // PKCS#8 ("BEGIN PRIVATE KEY"): key type is embedded in the DER, not the header.
+        // Try RSA first; fall back to EC.
+        try {
+            return RSAKey.parseFromPEMEncodedObjects(pem);
+        } catch (JOSEException e) {
+            return ECKey.parseFromPEMEncodedObjects(pem);
+        }
+    }
+
+    private static void validateKeyAlgorithmCompatibility(JWK key, JWSAlgorithm algorithm) {
+        boolean ecKey = key instanceof ECKey;
+        boolean ecAlg = isEcAlgorithm(algorithm);
+        if (ecKey && !ecAlg) {
+            throw new ConfigurationException(
+                    "EC key provided but a non-EC algorithm is configured (" + algorithm + "). " +
+                    "Use an EC algorithm (ES256, ES384, ES512) or supply an RSA key.");
+        }
+        if (!ecKey && ecAlg) {
+            throw new ConfigurationException(
+                    "RSA key provided but an EC algorithm is configured (" + algorithm + "). " +
+                    "Use an RSA algorithm (RS256, RS384, RS512, PS256, PS384, PS512) or supply an EC key.");
+        }
     }
 
     private static JWK generateSigningKey(JWSAlgorithm algorithm) throws JOSEException {
@@ -211,7 +249,7 @@ public class Configuration {
                     .algorithm(algorithm)
                     .generate();
         }
-        return new RSAKeyGenerator(2048)
+        return new RSAKeyGenerator(DEFAULT_RSA_KEY_SIZE)
                 .keyUse(KeyUse.SIGNATURE)
                 .keyID("signingKey")
                 .issueTime(new Date())

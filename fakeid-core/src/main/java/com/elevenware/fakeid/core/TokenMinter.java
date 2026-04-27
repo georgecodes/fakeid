@@ -80,6 +80,7 @@ public final class TokenMinter {
         if (key instanceof ECKey) {
             return new ECDSASigner(((ECKey) key).toECPrivateKey());
         }
-        throw new IllegalArgumentException("Unsupported key type: " + key.getKeyType());
+        throw new IllegalArgumentException(
+                "Unsupported key type '" + key.getKeyType() + "': only RSA and EC keys are supported");
     }
 }
