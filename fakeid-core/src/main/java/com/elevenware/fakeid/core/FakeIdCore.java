@@ -29,6 +29,8 @@ import com.elevenware.fakeid.core.dto.IntrospectResponse;
 import com.elevenware.fakeid.core.dto.TokenRequest;
 import com.elevenware.fakeid.core.dto.TokenResponse;
 import com.elevenware.fakeid.core.error.UnsupportedGrantTypeException;
+import com.nimbusds.jose.jwk.ECKey;
+import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.oidc4j.v2.lib.Provider;
 import com.oidc4j.v2.lib.ProviderConfiguration;
@@ -68,7 +70,7 @@ public class FakeIdCore {
     public FakeIdCore(Configuration configuration) {
         this.configuration = configuration;
         this.provider = buildV2Provider(configuration);
-        this.tokenMinter = new TokenMinter(provider.getKeySource().getSigningKey(), configuration.getIssuer());
+        this.tokenMinter = new TokenMinter(provider.getKeySource().getActiveJwk(), configuration.getIssuer());
     }
 
     public TokenResponse token(TokenRequest request) {
@@ -241,6 +243,16 @@ public class FakeIdCore {
                 now.plus(1L, ChronoUnit.HOURS)));
     }
 
+    private static SigningKeySource signingKeySourceFor(JWK jwk) {
+        if (jwk instanceof RSAKey) {
+            return new SigningKeySource((RSAKey) jwk);
+        }
+        if (jwk instanceof ECKey) {
+            return new SigningKeySource((ECKey) jwk);
+        }
+        throw new IllegalArgumentException("Unsupported signing key type: " + jwk.getKeyType());
+    }
+
     private static Provider buildV2Provider(Configuration configuration) {
         ProviderConfiguration providerConfig = ProviderConfiguration.builder()
                 .issuer(configuration.getIssuer())
@@ -254,8 +266,11 @@ public class FakeIdCore {
                 .scope("email")
                 .build();
 
-        RSAKey signingKey = (RSAKey) configuration.getJwks().getKeyByKeyId("signingKey");
-        SigningKeySource keySource = new SigningKeySource(signingKey);
+        JWK signingJwk = configuration.getJwks().getKeyByKeyId("signingKey");
+        if (signingJwk == null) {
+            throw new IllegalArgumentException("JWKS configuration must contain a signing key with kid 'signingKey'.");
+        }
+        SigningKeySource keySource = signingKeySourceFor(signingJwk);
 
         ClientStore clientStore = new AutoAcceptClientStore();
         UserStore userStore = new InMemoryUserStore();

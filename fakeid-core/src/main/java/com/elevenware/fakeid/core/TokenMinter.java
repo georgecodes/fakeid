@@ -23,7 +23,11 @@ package com.elevenware.fakeid.core;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.JWSSigner;
+import com.nimbusds.jose.crypto.ECDSASigner;
 import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jose.jwk.ECKey;
+import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
@@ -35,12 +39,34 @@ import java.util.Map;
 
 public final class TokenMinter {
 
-    private final RSAKey signingKey;
+    private final JWK signingKey;
     private final String issuer;
 
-    public TokenMinter(RSAKey signingKey, String issuer) {
+    public TokenMinter(JWK signingKey, String issuer) {
+        validateSigningKey(signingKey);
         this.signingKey = signingKey;
         this.issuer = issuer;
+    }
+
+    private static void validateSigningKey(JWK key) {
+        if (key.getAlgorithm() == null) {
+            throw new IllegalArgumentException(
+                    "Signing key must have an 'alg' parameter set; received a " +
+                    key.getKeyType() + " key with no algorithm");
+        }
+        JWSAlgorithm alg = JWSAlgorithm.parse(key.getAlgorithm().getName());
+        boolean ecKey = key instanceof ECKey;
+        boolean ecAlg = JWSAlgorithm.Family.EC.contains(alg);
+        if (ecKey && !ecAlg) {
+            throw new IllegalArgumentException(
+                    "EC key cannot be used with non-EC algorithm " + alg +
+                    "; use ES256, ES384 or ES512");
+        }
+        if (!ecKey && ecAlg) {
+            throw new IllegalArgumentException(
+                    "RSA key cannot be used with EC algorithm " + alg +
+                    "; use RS256, RS384, RS512, PS256, PS384 or PS512");
+        }
     }
 
     public String mintIdToken(String subject, String audience, String nonce, Map<String, Object> claims) {
@@ -62,10 +88,21 @@ public final class TokenMinter {
                 .build();
         SignedJWT idToken = new SignedJWT(header, claimsBuilder.build());
         try {
-            idToken.sign(new RSASSASigner(signingKey.toRSAPrivateKey()));
+            idToken.sign(createSigner(signingKey));
             return idToken.serialize();
         } catch (JOSEException e) {
             throw new IllegalStateException("Failed to sign id_token", e);
         }
+    }
+
+    private static JWSSigner createSigner(JWK key) throws JOSEException {
+        if (key instanceof RSAKey) {
+            return new RSASSASigner(((RSAKey) key).toRSAPrivateKey());
+        }
+        if (key instanceof ECKey) {
+            return new ECDSASigner(((ECKey) key).toECPrivateKey());
+        }
+        throw new IllegalArgumentException(
+                "Unsupported key type '" + key.getKeyType() + "': only RSA and EC keys are supported");
     }
 }
