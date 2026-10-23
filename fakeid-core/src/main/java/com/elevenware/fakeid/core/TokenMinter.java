@@ -70,6 +70,13 @@ public final class TokenMinter {
     }
 
     public String mintIdToken(String subject, String audience, String nonce, Map<String, Object> claims) {
+        return mintSignedIdToken(subject, audience, nonce, claims).serialize();
+    }
+
+    /**
+     * Mints the signed id token without serialising it, so a caller can nest it inside a JWE.
+     */
+    public SignedJWT mintSignedIdToken(String subject, String audience, String nonce, Map<String, Object> claims) {
         JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder();
         for (Map.Entry<String, Object> claim : claims.entrySet()) {
             claimsBuilder.claim(claim.getKey(), claim.getValue());
@@ -89,7 +96,7 @@ public final class TokenMinter {
         SignedJWT idToken = new SignedJWT(header, claimsBuilder.build());
         try {
             idToken.sign(createSigner(signingKey));
-            return idToken.serialize();
+            return idToken;
         } catch (JOSEException e) {
             throw new IllegalStateException("Failed to sign id_token", e);
         }

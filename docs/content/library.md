@@ -223,6 +223,31 @@ Configuration configuration = Configuration.builder()
 FakeIdApplication app = new FakeIdApplication(configuration).start();
 ```
 
+#### Encrypted id tokens
+
+Give the builder a JWE algorithm and the relying party's key, and every id token is returned as a
+nested JWT (signed, then encrypted to that key). Supplying the full key pair, as below, keeps the
+private half on `Configuration#getIdTokenEncryptionKey()` so the test can decrypt; omit the key and
+Fake ID generates one for you.
+
+```java
+RSAKey rpKey = new RSAKeyGenerator(2048).keyID("rp-enc").generate();
+
+Configuration configuration = Configuration.builder()
+        .randomPort()
+        .idTokenEncryption(JWEAlgorithm.RSA_OAEP_256, EncryptionMethod.A256GCM, rpKey)
+        .build();
+
+// ... obtain an id_token from the token endpoint, then:
+EncryptedJWT jwe = EncryptedJWT.parse(idToken);
+jwe.decrypt(new RSADecrypter(rpKey));
+SignedJWT inner = jwe.getPayload().toSignedJWT();
+inner.verify(new RSASSAVerifier(configuration.getJwks().getKeyByKeyId("signingKey").toRSAKey()));
+```
+
+For `ECDH-ES` algorithms supply an `ECKey` (P-256, P-384 or P-521) and decrypt with `ECDHDecrypter`.
+Symmetric algorithms and `RSA1_5` are rejected at build time.
+
 ## Using it in a JUnit 5 test
 
 A typical pattern is to start Fake ID (either flavour) once per test class. With `fakeid`:

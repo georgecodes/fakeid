@@ -137,6 +137,10 @@ Configuration options are
 | FAKEID_SAMPLE_JWT    | This is merely an alias for FAKEID_SAMPLE_CLAIMS. Either can be used for either chosen format
 | FAKEID_SIGNING_ALGORITHM | The JWS algorithm used to sign id tokens. RSA: RS256, RS384, RS512, PS256, PS384, PS512. EC: ES256, ES384, ES512. Defaults to RS256
 | FAKEID_SIGNING_ALG | Shorthand for FAKEID_SIGNING_ALGORITHM
+| FAKEID_ID_TOKEN_ENCRYPTION_ALG | Switches on id token encryption using this JWE key-management algorithm. RSA: RSA-OAEP, RSA-OAEP-256, RSA-OAEP-384, RSA-OAEP-512. EC: ECDH-ES, ECDH-ES+A128KW, ECDH-ES+A192KW, ECDH-ES+A256KW. Off by default
+| FAKEID_ID_TOKEN_ENCRYPTION_ALGORITHM | Alias for FAKEID_ID_TOKEN_ENCRYPTION_ALG
+| FAKEID_ID_TOKEN_ENCRYPTION_ENC | The JWE content-encryption method: A128CBC-HS256, A192CBC-HS384, A256CBC-HS512, A128GCM, A192GCM, A256GCM. Defaults to A128CBC-HS256
+| FAKEID_ID_TOKEN_ENCRYPTION_KEY | The relying party's public key that id tokens are encrypted to, base64 encoded. Either a PEM-format public key (RSA or EC) or a JWK JSON object
 
 If you do not provide FAKEID_ISSUER it will default to http://localhost:8091
 
@@ -144,6 +148,24 @@ If you do not provide FAKEID_SIGNING_KEY one will be generated for you on startu
 you may hit signature verification errors.
 
 If you do not provide FAKEID_SAMPLE_CLAIMS your id tokens will have the usual necessary claims such as iss and aud, as well as a subject and name of "John C. Developer" and an email claim of "john@developer.com"
+
+### ID token encryption
+
+By default id tokens are signed only. Set FAKEID_ID_TOKEN_ENCRYPTION_ALG and Fake ID returns every id token as a nested JWT: the signed token wrapped in a JWE (sign then encrypt, per OpenID Connect Core section 10.2) with `cty: JWT` in the header. The encryption applies to every client, since Fake ID accepts any client id without registration. The discovery document advertises `id_token_encryption_alg_values_supported` and `id_token_encryption_enc_values_supported` only while encryption is on.
+
+The key you supply is the relying party's **public** key, so it is never published on the JWKS URI. Its type must match the algorithm family: RSA-OAEP algorithms need an RSA key, ECDH-ES algorithms need an EC key on P-256, P-384 or P-521. If you set an algorithm without a key Fake ID generates a key pair on startup and logs the private JWK so you can paste it into your relying party. As with the signing key, that pair changes on every start.
+
+Symmetric algorithms (A128KW, A256KW, A128GCMKW, dir and friends) derive their key from the client secret. Fake ID has no registered secrets, so those algorithms are rejected. RSA1_5 is refused too.
+
+In the JSON config file the same settings live under `idTokenEncryption`; see `config/config-encrypted.json` for a complete example:
+
+```json
+"idTokenEncryption": {
+  "alg": "RSA-OAEP-256",
+  "enc": "A256GCM",
+  "key": { "kty": "RSA", "kid": "rp-encryption-key", "use": "enc", "e": "AQAB", "n": "..." }
+}
+```
 
 ## Generating these options
 
@@ -178,6 +200,26 @@ base64 ec-key-pkcs8.pem
 ```
 
 Set `FAKEID_SIGNING_ALGORITHM` to the matching EC algorithm (`ES256`, `ES384`, or `ES512`) when providing an EC key.
+
+### OpenSSL for the id token encryption key
+
+The relying party owns this key pair. Fake ID only needs the public half, and the relying party keeps the private half to decrypt id tokens.
+
+**RSA (for RSA-OAEP, RSA-OAEP-256, RSA-OAEP-384, RSA-OAEP-512):**
+
+```sh
+openssl genrsa -out rp-enc-key.pem 2048          # keep this with the relying party
+openssl rsa -in rp-enc-key.pem -pubout -out rp-enc-pub.pem
+base64 < rp-enc-pub.pem | tr -d '\n'             # FAKEID_ID_TOKEN_ENCRYPTION_KEY
+```
+
+**EC (for ECDH-ES, ECDH-ES+A128KW, ECDH-ES+A192KW, ECDH-ES+A256KW):**
+
+```sh
+openssl ecparam -name prime256v1 -genkey -noout -out rp-enc-key.pem   # or secp384r1 / secp521r1
+openssl ec -in rp-enc-key.pem -pubout -out rp-enc-pub.pem
+base64 < rp-enc-pub.pem | tr -d '\n'             # FAKEID_ID_TOKEN_ENCRYPTION_KEY
+```
 
 ### Some websites which will generate RSA keys
 

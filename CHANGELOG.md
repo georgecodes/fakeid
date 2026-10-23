@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **ID token encryption**: Fake ID can now return id tokens as nested JWTs (signed, then
+  encrypted to the relying party's public key per OpenID Connect Core §10.2). Configure it with
+  `FAKEID_ID_TOKEN_ENCRYPTION_ALG` (alias `FAKEID_ID_TOKEN_ENCRYPTION_ALGORITHM`),
+  `FAKEID_ID_TOKEN_ENCRYPTION_ENC` (defaults to `A128CBC-HS256`) and
+  `FAKEID_ID_TOKEN_ENCRYPTION_KEY` (base64 PEM public key or JWK), an `idTokenEncryption` block in
+  the JSON config file, or `Configuration.Builder#idTokenEncryption(...)`. Supported algorithms are
+  RSA-OAEP, RSA-OAEP-256, RSA-OAEP-384, RSA-OAEP-512, ECDH-ES, ECDH-ES+A128KW, ECDH-ES+A192KW and
+  ECDH-ES+A256KW; symmetric algorithms and RSA1_5 are rejected. When an algorithm is set without a
+  key, a recipient key pair is generated and its private JWK logged. The discovery document
+  advertises `id_token_encryption_alg_values_supported` / `..._enc_values_supported` while enabled.
+- `AutoAcceptClientStore` registers every auto-created client with
+  `id_token_encrypted_response_alg` / `_enc` and the recipient key as inline `jwks` when encryption
+  is configured. `TokenMinter#mintSignedIdToken` exposes the `SignedJWT` for nesting.
+- 44 new unit tests covering configuration parsing and validation, the environment key formats,
+  core and token-endpoint round trips for RSA and EC recipients, and discovery metadata over HTTP.
+- `config/config-encrypted.json` example.
+
 - **EC signing algorithm support**: Fake ID can now sign id tokens using Elliptic Curve (EC)
   algorithms — ES256 (P-256), ES384 (P-384), and ES512 (P-521) — in addition to the existing
   RSA-based algorithms.
@@ -23,6 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Updated `oidc4j` dependency from `0.1.6` to `0.4.0`, which provides `IdTokenEncrypter`, the
+  per-client encryption metadata on `Client` and the encryption fields on `DiscoveryDocument`.
+  Existing behaviour is unchanged; the full test suite passes without modification.
 - Updated `oidc4j` dependency from `0.1.0` to `0.1.6`. The new version introduces
   `SigningKeySource`, a unified key-management abstraction that supports RSA and EC keys, key
   rotation, and PEM-based loading.
