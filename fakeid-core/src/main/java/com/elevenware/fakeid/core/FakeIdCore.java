@@ -32,10 +32,13 @@ import com.elevenware.fakeid.core.error.UnsupportedGrantTypeException;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jwt.SignedJWT;
+import com.oidc4j.v2.lib.IdTokenEncrypter;
 import com.oidc4j.v2.lib.Provider;
 import com.oidc4j.v2.lib.ProviderConfiguration;
 import com.oidc4j.v2.lib.SigningKeySource;
 import com.oidc4j.v2.lib.model.DiscoveryDocument;
+import com.oidc4j.v2.lib.store.Client;
 import com.oidc4j.v2.lib.store.ClientStore;
 import com.oidc4j.v2.lib.store.InMemoryIssuedGrantStore;
 import com.oidc4j.v2.lib.store.InMemoryPendingGrantStore;
@@ -108,11 +111,7 @@ public class FakeIdCore {
             saveIssuedGrant(request.clientId(), "implicit", request.scopes(), accessToken);
         }
         if (responseType.contains("id_token")) {
-            idToken = tokenMinter.mintIdToken(
-                    subject,
-                    request.clientId(),
-                    request.nonce(),
-                    configuration.getClaims());
+            idToken = mintIdToken(request.clientId(), request.nonce());
         }
         return new AuthorizeResponse(
                 request.redirectUri(),
@@ -183,11 +182,7 @@ public class FakeIdCore {
             scope = String.join(" ", scopes);
         }
         if (scope.contains("openid")) {
-            idToken = tokenMinter.mintIdToken(
-                    configuration.getClaims().get("sub").toString(),
-                    clientId,
-                    noncesByCode.remove(authCode),
-                    configuration.getClaims());
+            idToken = mintIdToken(clientId, noncesByCode.remove(authCode));
         } else {
             noncesByCode.remove(authCode);
         }
@@ -204,6 +199,28 @@ public class FakeIdCore {
                 clientId,
                 "authorization_code",
                 idToken);
+    }
+
+    /**
+     * Signs the id token and, when the client is registered for id token encryption (which
+     * {@link AutoAcceptClientStore} does for every client once encryption is configured), nests it
+     * inside a JWE encrypted to the relying party's key.
+     */
+    private String mintIdToken(String clientId, String nonce) {
+        SignedJWT signed = tokenMinter.mintSignedIdToken(
+                configuration.getClaims().get("sub").toString(),
+                clientId,
+                nonce,
+                configuration.getClaims());
+        Client client = provider.getClientStore().findById(clientId).orElse(null);
+        ProviderConfiguration providerConfig = provider.getConfig();
+        return IdTokenEncrypter.forClient(
+                        client,
+                        providerConfig.getClientJwksResolver(),
+                        providerConfig.getEffectiveIdTokenEncryptionAlgs(),
+                        providerConfig.getEffectiveIdTokenEncryptionEncs())
+                .map(encrypter -> encrypter.encrypt(signed))
+                .orElseGet(signed::serialize);
     }
 
     private TokenResponse clientCredentialsGrant(String clientId, String scope) {
@@ -254,7 +271,7 @@ public class FakeIdCore {
     }
 
     private static Provider buildV2Provider(Configuration configuration) {
-        ProviderConfiguration providerConfig = ProviderConfiguration.builder()
+        ProviderConfiguration.Builder providerConfigBuilder = ProviderConfiguration.builder()
                 .issuer(configuration.getIssuer())
                 .grantType("authorization_code")
                 .grantType("client_credentials")
@@ -263,8 +280,15 @@ public class FakeIdCore {
                 .clientAuthMethod("client_secret_post")
                 .scope("openid")
                 .scope("profile")
-                .scope("email")
-                .build();
+                .scope("email");
+        if (configuration.isIdTokenEncryptionEnabled()) {
+            // Advertise exactly the algorithm and method Fake ID will apply, so the discovery
+            // document matches the tokens relying parties receive.
+            providerConfigBuilder
+                    .idTokenEncryptionAlg(configuration.getIdTokenEncryptionAlgorithm().getName())
+                    .idTokenEncryptionEnc(configuration.getIdTokenEncryptionMethod().getName());
+        }
+        ProviderConfiguration providerConfig = providerConfigBuilder.build();
 
         JWK signingJwk = configuration.getJwks().getKeyByKeyId("signingKey");
         if (signingJwk == null) {
@@ -272,7 +296,10 @@ public class FakeIdCore {
         }
         SigningKeySource keySource = signingKeySourceFor(signingJwk);
 
-        ClientStore clientStore = new AutoAcceptClientStore();
+        ClientStore clientStore = new AutoAcceptClientStore(
+                configuration.getIdTokenEncryptionAlgorithm(),
+                configuration.getIdTokenEncryptionMethod(),
+                configuration.getIdTokenEncryptionKey());
         UserStore userStore = new InMemoryUserStore();
         Object subject = configuration.getClaims().get("sub");
         if (subject != null) {

@@ -1,0 +1,19 @@
+{
+  "issuer": "http://localhost:8091",
+  "claims": {
+    "sub": "dev@example.com",
+    "name": "Dev User",
+    "email": "dev@example.com"
+  },
+  "idTokenEncryption": {
+    "alg": "RSA-OAEP-256",
+    "enc": "A256GCM",
+    "key": {
+      "kty": "RSA",
+      "kid": "rp-encryption-key",
+      "use": "enc",
+      "e": "AQAB",
+      "n": "xSLs1xBL_T4XawlOd56fiZzjX58Fzea7O44V_pibLCDNJGsC9cqki0wqb4B9LbwHWQVy83ZQPlN2EvwaPmVmbhZXQbCj9E3bP40NfDEP_EGVr_0_1FQNjc1POMSZT1A-s33UgIGI_bYhSzC9ADLI1emXTDmxpMquYDy9fQKBSNhfjC9TqXwp3_1m5qf0AQFT3Lkre7rDbBaLHTa-geGI8wIonJVjrIZWBGesPjOigaE71DuNjeKjOkMoJZ4Xx7CWXQxW8MKyr7fUta_Qa63JjKluSsAUF9Vc6KXfWO7BamRMSu291oL9b47ChzeSA50QawMktyW46DEq1lXbXI6tvQ"
+    }
+  }
+}
